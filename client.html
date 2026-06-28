@@ -385,34 +385,64 @@
                         <div class="service-option" onclick="selectAbonnement(this, 'mensuel')">
                             <div style="font-size: 30px; margin-bottom: 10px;">📅</div>
                             <h4>Mensuel</h4>
-                            <div class="price">80$/mois</div>
+                            <div class="price" id="price-mensuel">92.00$/mois</div>
+                            <p style="font-size: 11px; color: #888;">HT: 80$ + Taxes QC 14.975%</p>
                             <p style="font-size: 13px; color: #666;">1 prestation/mois</p>
                         </div>
                         <div class="service-option" onclick="selectAbonnement(this, 'trimestriel')">
                             <div style="font-size: 30px; margin-bottom: 10px;">📆</div>
                             <h4>Trimestriel</h4>
-                            <div class="price">220$/3 mois</div>
+                            <div class="price" id="price-trimestriel">253.00$/3 mois</div>
+                            <p style="font-size: 11px; color: #888;">HT: 220$ + Taxes QC 14.975%</p>
                             <p style="font-size: 13px; color: #666;">3 prestations + 1 gratuite</p>
                         </div>
                         <div class="service-option" onclick="selectAbonnement(this, 'annuel')">
                             <div style="font-size: 30px; margin-bottom: 10px;">🎉</div>
                             <h4>Annuel</h4>
-                            <div class="price">800$/an</div>
+                            <div class="price" id="price-annuel">920.00$/an</div>
+                            <p style="font-size: 11px; color: #888;">HT: 800$ + Taxes QC 14.975%</p>
                             <p style="font-size: 13px; color: #666;">12 prestations + 3 gratuites</p>
                         </div>
                     </div>
 
+                    <!-- Calcul taxes -->
+                    <div id="taxDetail" style="background: #f8f9ff; border-radius: 12px; padding: 15px; margin: 15px 0; display: none;">
+                        <h4 style="color: #667eea; margin-bottom: 10px; font-size: 14px;">💰 Détail du prix</h4>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>Prix HT</span>
+                            <span id="detail-ht">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>TPS (5%)</span>
+                            <span id="detail-tps">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>TVQ (9.975%)</span>
+                            <span id="detail-tvq">--</span>
+                        </div>
+                        <div style="border-top: 2px solid #667eea; padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; font-weight: bold; font-size: 16px;">
+                            <span>Total TTC</span>
+                            <span id="detail-ttc" style="color: #667eea;">--</span>
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-top: 20px;">
+                        <label>Code de parrainage (optionnel)</label>
+                        <input type="text" id="codeParrainageAbonnement" placeholder="KADIO-XXXXXX" style="text-transform: uppercase;">
+                        <p style="font-size: 12px; color: #888; margin-top: 5px;">Entrez un code de parrainage pour bénéficier de 10% de réduction sur votre première mensualité</p>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
                         <label>Mode de paiement</label>
                         <select id="paymentMode">
-                            <option value="comptant">Comptant au salon</option>
-                            <option value="klarna">Klarna — Payer en 4x sans frais</option>
-                            <option value="affirm">Affirm — Payer en plusieurs fois</option>
-                            <option value="stripe">Carte de crédit (Stripe)</option>
+                            <option value="comptant">💵 Comptant au salon</option>
+                            <option value="stripe">💳 Carte de crédit (Stripe)</option>
                         </select>
                     </div>
 
-                    <button class="btn btn-primary" onclick="subscribePlan()" style="margin-top: 20px;">Souscrire</button>
+                    <button class="btn btn-primary" onclick="subscribePlan()" style="margin-top: 20px; width: 100%;">
+                        Souscrire maintenant
+                    </button>
                 </div>
             </div>
         </div>
@@ -737,6 +767,19 @@
             document.querySelectorAll('.service-option').forEach(o => o.classList.remove('selected'));
             el.classList.add('selected');
             selectedAbonnement = plan;
+            
+            // Calculer et afficher les taxes
+            const prices = { mensuel: 80, trimestriel: 220, annuel: 800 };
+            const ht = prices[plan];
+            const tps = Math.round(ht * 0.05 * 100) / 100;
+            const tvq = Math.round(ht * 0.09975 * 100) / 100;
+            const ttc = Math.round(ht * 1.14975 * 100) / 100;
+            
+            document.getElementById('detail-ht').textContent = ht.toFixed(2) + '$';
+            document.getElementById('detail-tps').textContent = tps.toFixed(2) + '$';
+            document.getElementById('detail-tvq').textContent = tvq.toFixed(2) + '$';
+            document.getElementById('detail-ttc').textContent = ttc.toFixed(2) + '$';
+            document.getElementById('taxDetail').style.display = 'block';
         }
 
         async function subscribePlan() {
@@ -747,6 +790,7 @@
 
             const phone = localStorage.getItem('clientPhone');
             const payment = document.getElementById('paymentMode').value;
+            const codeParrainage = document.getElementById('codeParrainageAbonnement').value.trim().toUpperCase();
 
             try {
                 const response = await fetch(`${API_BASE}/api/client/abonnement`, {
@@ -755,24 +799,32 @@
                     body: JSON.stringify({
                         telephone: phone,
                         forfait: selectedAbonnement,
-                        paiement: payment
+                        paiement: payment,
+                        code_parrainage: codeParrainage || null,
+                        email: phone + '@kadio.co'
                     })
                 });
                 
-                if (payment === 'klarna' || payment === 'affirm') {
-                    const data = await response.json();
-                    if (data.payment_url) {
-                        window.location.href = data.payment_url;
-                        return;
-                    }
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('❌ ' + data.error);
+                    return;
                 }
                 
-                alert('✅ Abonnement souscrit avec succès !');
+                // Si Stripe, rediriger vers le lien de paiement
+                if (data.stripe_link) {
+                    alert(data.message);
+                    window.open(data.stripe_link, '_blank');
+                    showSection('dashboard');
+                    return;
+                }
+                
+                alert('✅ ' + data.message);
                 showSection('dashboard');
             } catch (e) {
                 console.error('Error subscribing:', e);
-                alert('✅ Abonnement enregistré ! (Mode démo)');
-                showSection('dashboard');
+                alert('❌ Erreur lors de la souscription');
             }
         }
 

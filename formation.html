@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kadio Coiffure - Formation Obligatoire</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #888;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .warning-icon { font-size: 24px; }
+        .warning-text { color: #856404; font-weight: 600; }
+        
+        .section { margin-bottom: 25px; }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .regle-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .regle-titre {
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .regle-contenu { color: #555; font-size: 14px; }
+        .regle-consequence { color: #dc3545; font-size: 12px; margin-top: 5px; font-weight: 600; }
+        
+        .video-section {
+            background: #f0f0f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .video-placeholder {
+            background: #333;
+            border-radius: 12px;
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .btn-visionner {
+            width: 100%;
+            padding: 18px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-visionner:hover { background: #5a67d8; }
+        .btn-visionner:disabled { background: #888; cursor: not-allowed; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .timer {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .success-msg {
+            display: none;
+            background: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .success-msg.show { display: block; }
+        .success-icon { font-size: 48px; margin-bottom: 10px; }
+        .btn-acceder {
+            margin-top: 15px;
+            padding: 15px 40px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Formation Obligatoire</h1>
+            <p>Bienvenue chez Kadio Coiffure ! Avant d'accéder à ton espace employé, tu dois compléter cette formation.</p>
+        </div>
+        
+        <div class="warning">
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-text">Cette étape est obligatoire. Tu ne pourras pas accéder à ton espace employé tant que la formation n'est pas terminée.</span>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">📋 Charte Réglementaire</h2>
+            <div id="reglesList">
+                <p style="color: #888; text-align: center;">Chargement...</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2 class="section-title">🎥 Vidéo Explicative</h2>
+            <div class="video-section">
+                <div class="video-placeholder" id="videoPlayer">
+                    🎬
+                </div>
+                <button class="btn-visionner" id="btnVisionner" onclick="startVideo()">
+                    ▶️ Démarrer la vidéo
+                </button>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="timer" id="timerText">Durée: 0:00 / 3:00</div>
+            </div>
+        </div>
+        
+        <div class="success-msg" id="successMsg">
+            <div class="success-icon">🎉</div>
+            <h3>Formation terminée !</h3>
+            <p>Tu as bien visionné la vidéo explicative. Tu peux maintenant accéder à ton espace employé.</p>
+            <button class="btn-acceder" onclick="accederEspace()">Accéder à mon espace</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://kadio-cerveau-production-9b8d.up.railway.app';
+        const urlParams = new URLSearchParams(window.location.search);
+        const employeId = urlParams.get('employe_id');
+        
+        let videoDuration = 180; // 3 minutes en secondes
+        let currentTime = 0;
+        let isPlaying = false;
+        let timerInterval = null;
+        
+        // Charger les règles
+        async function loadRegles() {
+            try {
+                const res = await fetch(`${API_URL}/regles-salon`);
+                const data = await res.json();
+                
+                const list = document.getElementById('reglesList');
+                list.innerHTML = data.regles.map(r => `
+                    <div class="regle-item">
+                        <div class="regle-titre">${r.id}. ${r.titre}</div>
+                        <div class="regle-contenu">${r.contenu}</div>
+                        <div class="regle-consequence">⚠️ Conséquence: ${r.consequence}</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Erreur chargement règles:', err);
+            }
+        }
+        
+        function startVideo() {
+            if (isPlaying) return;
+            
+            isPlaying = true;
+            document.getElementById('btnVisionner').disabled = true;
+            document.getElementById('btnVisionner').textContent = '⏸️ Lecture en cours...';
+            
+            timerInterval = setInterval(() => {
+                currentTime++;
+                updateProgress();
+                
+                if (currentTime >= videoDuration) {
+                    completeVideo();
+                }
+            }, 1000);
+        }
+        
+        function updateProgress() {
+            const pct = (currentTime / videoDuration) * 100;
+            document.getElementById('progressFill').style.width = pct + '%';
+            
+            const mins = Math.floor(currentTime / 60);
+            const secs = currentTime % 60;
+            const totalMins = Math.floor(videoDuration / 60);
+            const totalSecs = videoDuration % 60;
+            document.getElementById('timerText').textContent = 
+                `Durée: ${mins}:${secs.toString().padStart(2, '0')} / ${totalMins}:${totalSecs.toString().padStart(2, '0')}`;
+        }
+        
+        async function completeVideo() {
+            clearInterval(timerInterval);
+            isPlaying = false;
+            
+            // Enregistrer le visionnage
+            try {
+                const res = await fetch(`${API_URL}/videos/visionner`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employe_id: parseInt(employeId),
+                        video_type: 'reglement',
+                        visionnee: true,
+                        duree_secondes: videoDuration,
+                        complet: true
+                    })
+                });
+                
+                if (res.ok) {
+                    document.getElementById('successMsg').classList.add('show');
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            } catch (err) {
+                console.error('Erreur enregistrement:', err);
+            }
+        }
+        
+        function accederEspace() {
+            window.location.href = '/employe.html';
+        }
+        
+        // Init
+        loadRegles();
+    </script>
+</body>
+</html>

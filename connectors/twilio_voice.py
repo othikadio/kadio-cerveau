@@ -68,3 +68,23 @@ class TwilioVoiceConnector:
             "sid": data.get("sid"),
             "status": data.get("status")
         }
+    
+    def send_sms(self, to_number: str, message: str) -> Dict:
+        """Envoie un SMS texte"""
+        url = f"{self.base_url}/Messages.json"
+        
+        payload = {
+            "From": self.twilio_number,
+            "To": to_number,
+            "Body": message
+        }
+        
+        resp = requests.post(url, data=payload, auth=(self.twilio_sid, self.twilio_auth), timeout=15)
+        data = resp.json()
+        
+        return {
+            "success": "sid" in data,
+            "sid": data.get("sid"),
+            "status": data.get("status"),
+            "error": data.get("message") if "sid" not in data else None
+        }

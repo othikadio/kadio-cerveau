@@ -48,7 +48,8 @@ class ObservationEngine:
                 content TEXT,
                 context TEXT,
                 duration_seconds INTEGER,
-                day_number INTEGER
+                day_number INTEGER,
+                owner_id TEXT
             )
         ''')
         

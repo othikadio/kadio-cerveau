@@ -597,19 +597,52 @@ async def create_subscription(request: Request):
 
 @app.get("/subscription/info")
 async def subscription_info():
-    """Retourne les infos de l'abonnement disponible"""
+    """Retourne les infos des abonnements disponibles avec taxes Québec"""
+    TAX_RATE = 0.14975
+    
+    def calc_ttc(ht):
+        return round(ht * (1 + TAX_RATE), 2)
+    
     return {
-        "name": "Pixie cut au fer",
-        "price": 50.00,
-        "currency": "CAD",
-        "period": "monthly",
-        "includes": [
-            "Coupe courte stylée",
-            "Boucles au fer à lisser",
-            "2 lissages offerts par semaine"
+        "salon": "Kadio Coiffure",
+        "taxes": {"tps": "5%", "tvq": "9.975%", "total": "14.975%"},
+        "forfaits": [
+            {
+                "id": "mensuel",
+                "name": "Abonnement Mensuel",
+                "price_ht": 80.00,
+                "price_ttc": calc_ttc(80),
+                "currency": "CAD",
+                "period": "monthly",
+                "includes": ["1 prestation par mois"],
+                "taxes_incluses": True
+            },
+            {
+                "id": "trimestriel",
+                "name": "Abonnement Trimestriel",
+                "price_ht": 220.00,
+                "price_ttc": calc_ttc(220),
+                "currency": "CAD",
+                "period": "3_months",
+                "includes": ["3 prestations + 1 gratuite"],
+                "taxes_incluses": True
+            },
+            {
+                "id": "annuel",
+                "name": "Abonnement Annuel",
+                "price_ht": 800.00,
+                "price_ttc": calc_ttc(800),
+                "currency": "CAD",
+                "period": "yearly",
+                "includes": ["12 prestations + 3 gratuites"],
+                "taxes_incluses": True
+            }
         ],
-        "excludes": ["lavage", "shampoing"],
-        "taxes": "applicables"
+        "code_parrainage": {
+            "description": "Entrez un code KADIO-XXXXXX pour 10% de réduction sur la première mensualité",
+            "discount": "10%",
+            "applies_to": "first_payment_only"
+        }
     }
 
 # ========== ADMIN - ABONNÉS STRIPE ==========
@@ -973,6 +1006,22 @@ async def stripe_webhook(request: Request):
             # Déterminer le type d'abonnement depuis les métadonnées
             metadata = session.get("metadata", {})
             service_name = metadata.get("service", "Abonnement Kadio Coiffure")
+            
+            # Mettre à jour le statut de l'abonnement dans la base de données
+            try:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute("""
+                    UPDATE abonnements_clients_v2 
+                    SET statut = 'actif', stripe_subscription_id = ?
+                    WHERE stripe_session_id = ? AND statut = 'en_attente_paiement'
+                """, (subscription_id, session.get('id')))
+                if c.rowcount > 0:
+                    conn.commit()
+                    print(f"✅ Abonnement activé pour session {session.get('id')}")
+                conn.close()
+            except Exception as e:
+                print(f"Erreur mise à jour abonnement: {e}")
             
             # === ENVOI REÇU EMAIL ===
             email_sent = False
@@ -6367,11 +6416,16 @@ async def get_base_clients():
     clients_raw = c.fetchall()
     clients = [dict(r) for r in clients_raw]
     
-    # Abonnés (depuis abonnements_clients)
+    # Abonnés (depuis abonnements_clients et abonnements_clients_v2)
     c.execute('''
-        SELECT client_telephone, type_forfait, date_inscription, employe_vendeur, 
-               prochain_paiement, actif
-        FROM abonnements_clients
+        SELECT 
+            client_telephone, type_forfait, date_inscription, employe_vendeur, 
+            prochain_paiement, actif,
+            COALESCE(prix_ht, 0) as prix_ht,
+            COALESCE(taxes_qc, 0) as taxes_qc,
+            COALESCE(prix_ttc, 0) as prix_ttc,
+            mode_paiement, code_parrainage, statut
+        FROM abonnements_clients_v2
         ORDER BY date_inscription DESC
     ''')
     abonnes_raw = c.fetchall()
@@ -6581,24 +6635,70 @@ async def book_client_rendezvous(request: Request):
 
 @app.post("/api/client/abonnement")
 async def subscribe_client_abonnement(request: Request):
-    """Subscribe to plan"""
+    """Subscribe to plan — Stripe avec taxes QC et code parrainage"""
     data = await request.json()
     telephone = data.get('telephone')
     forfait = data.get('forfait')
     paiement = data.get('paiement', 'comptant')
+    code_parrainage = data.get('code_parrainage')
+    email = data.get('email', f"{telephone}@kadio.co")
     
+    # Prix HT
     prices = {'mensuel': 80, 'trimestriel': 220, 'annuel': 800}
-    montant = prices.get(forfait, 80)
+    prix_ht = prices.get(forfait, 80)
+    
+    # Taxes Québec : 14.975%
+    TAX_RATE = 0.14975
+    prix_ttc = round(prix_ht * (1 + TAX_RATE), 2)
+    taxes = round(prix_ht * TAX_RATE, 2)
     
     conn = get_db_connection()
     c = conn.cursor()
     
-    c.execute("INSERT INTO abonnements_clients_v2 (client_telephone, type_forfait, montant_mensuel, mode_paiement) VALUES (?, ?, ?, ?)",
-              (telephone, forfait, montant, paiement))
+    # Si paiement Stripe, créer le lien
+    stripe_link = None
+    stripe_session_id = None
+    
+    if paiement == 'stripe':
+        result = await stripe.create_subscription_link(
+            customer_email=email,
+            forfait=forfait,
+            code_parrainage=code_parrainage,
+            phone=telephone
+        )
+        if result.get('success'):
+            stripe_link = result.get('link')
+            stripe_session_id = result.get('session_id')
+        else:
+            conn.close()
+            return {"error": result.get('error', 'Erreur Stripe')}
+    
+    c.execute("""
+        INSERT INTO abonnements_clients_v2 
+        (client_telephone, type_forfait, montant_mensuel, mode_paiement, 
+         prix_ht, taxes_qc, prix_ttc, code_parrainage, stripe_session_id, statut)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (telephone, forfait, prix_ht, paiement, prix_ht, taxes, prix_ttc, 
+          code_parrainage, stripe_session_id, 'actif' if not stripe_link else 'en_attente_paiement'))
     conn.commit()
     conn.close()
     
-    return {"success": True, "message": "Abonnement souscrit", "montant": montant}
+    response = {
+        "success": True, 
+        "message": "Abonnement souscrit" if paiement != 'stripe' else "Paiement Stripe requis",
+        "forfait": forfait,
+        "prix_ht": prix_ht,
+        "taxes_qc": taxes,
+        "prix_ttc": prix_ttc,
+        "mode_paiement": paiement
+    }
+    
+    if stripe_link:
+        response["stripe_link"] = stripe_link
+        response["stripe_session_id"] = stripe_session_id
+        response["message"] = f"Abonnement {forfait} — {prix_ht}$ + {taxes}$ taxes = {prix_ttc}$ TTC. Cliquez sur le lien Stripe pour payer."
+    
+    return response
 
 
 @app.get("/api/client/{telephone}/codes")

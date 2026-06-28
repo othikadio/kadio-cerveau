@@ -29,6 +29,28 @@ class SquareConnector:
                 "category": "locks",
                 "deposit_required": True,
                 "deposit_percent": 20
+            },
+            "detox_locks": {
+                "id": "CUSTOM_DETOX",
+                "name": "Détox locks",
+                "price": 75.0,
+                "duration": 60,  # 1h
+                "category": "locks",
+                "deposit_required": True,
+                "deposit_percent": 20
+            },
+            "pixie_cut_boucle_fer": {
+                "id": "CUSTOM_PIXIE_FER",
+                "name": "Pixie cut au fer",
+                "price": 50.0,
+                "duration": 60,  # 1h
+                "category": "coiffure",
+                "deposit_required": False,
+                "deposit_percent": 0,
+                "subscription": True,
+                "subscription_period": "monthly",
+                "includes": ["coupe", "brushing", "boucles au fer", "2 lissages/semaine (sans lavage)"],
+                "excludes": ["lavage", "shampoing"]
             }
         }
         
@@ -250,16 +272,28 @@ class SquareConnector:
     
     async def create_appointment(self, client_data: dict) -> Dict:
         """
-        Crée un rendez-vous dans Square.
-        client_data: {
-            "client_name": str,
-            "phone": str,
-            "service_name": str,  # ou service_id
-            "date": "YYYY-MM-DD",
-            "time": "HH:MM",
-            "notes": str (optionnel)
-        }
+        Crée un rendez-vous dans Square avec vérification des disponibilités.
+        Si le créneau est occupé, retourne les créneaux disponibles.
         """
+        date_str = client_data.get("date", "")
+        time_str = client_data.get("time", "")
+        
+        # VÉRIFICATION 1 : Vérifier les disponibilités AVANT tout
+        availability = await self.check_availability(date_str, client_data.get("service_name"))
+        
+        if time_str not in availability.get("available_slots", []):
+            # Créneau non disponible
+            return {
+                "error": "Créneau non disponible",
+                "requested_slot": f"{date_str} {time_str}",
+                "available_slots": availability.get("available_slots", []),
+                "message": f"❌ Le créneau {time_str} est déjà pris.\n\nCréneaux disponibles le {date_str} :\n" + "\n".join(availability.get("available_slots", [])[:10]),
+                "alternative": {
+                    "date": date_str,
+                    "available_slots": availability.get("available_slots", [])
+                }
+            }
+        
         # Trouver le service
         service = await self.find_service(client_data.get("service_name", ""))
         if not service:
@@ -271,8 +305,6 @@ class SquareConnector:
             return {"error": "Aucun coiffeur disponible"}
         
         # Construire la date/heure
-        date_str = client_data.get("date", "")
-        time_str = client_data.get("time", "")
         start_at = f"{date_str}T{time_str}:00-05:00"  # Timezone EST (Québec)
         
         # Créer ou trouver le client
@@ -295,8 +327,22 @@ class SquareConnector:
             notes = f"DÉPÔT REQUIS: {deposit_info['amount']}$ ({deposit_info['percent']}%) | {notes}"
         
         # Pour service custom sans ID Square, utiliser un service par défaut
-        svc_id = service["id"] if not is_custom else "VSOL3FRYL3PLRFPGKJZII7ZV"  # fallback: repousses locks
+        svc_id = service["id"] if not is_custom else "VSOL3FRYL3PLRFPGKJZII7ZV"
         svc_version = service.get("version", 1) if not is_custom else 1780002625436
+        
+        # VÉRIFICATION 2 : Double-check — s'assurer que le créneau est toujours libre
+        # (éviter race condition)
+        current_bookings = await self.list_appointments(date_str)
+        for b in current_bookings:
+            b_start = b.get("start_at", "")[:16]
+            requested_start = f"{date_str}T{time_str}:00"[:16]
+            if b_start == requested_start:
+                return {
+                    "error": "Créneau vient d'être pris",
+                    "requested_slot": f"{date_str} {time_str}",
+                    "available_slots": availability.get("available_slots", []),
+                    "message": f"❌ Désolé, quelqu'un vient de réserver ce créneau.\n\nAutres créneaux disponibles :\n" + "\n".join(availability.get("available_slots", [])[:10])
+                }
         
         payload = {
             "booking": {
@@ -329,7 +375,17 @@ class SquareConnector:
                 "message": f"✅ Rendez-vous confirmé pour {client_data['client_name']} le {date_str} à {time_str} — {service['name']} avec {member['name']}" + (f" | Dépôt requis: {deposit_info['amount']}$" if deposit_info["required"] else "")
             }
         
-        return {"error": result.get("errors", "Erreur inconnue")}
+        # Si erreur Square, retourner les disponibilités alternatives
+        errors = result.get("errors", [])
+        if errors:
+            error_msg = errors[0].get("detail", "Erreur inconnue") if isinstance(errors, list) else str(errors)
+            return {
+                "error": error_msg,
+                "available_slots": availability.get("available_slots", []),
+                "message": f"❌ {error_msg}\n\nCréneaux disponibles :\n" + "\n".join(availability.get("available_slots", [])[:10])
+            }
+        
+        return {"error": "Erreur inconnue", "available_slots": availability.get("available_slots", [])}
     
     def _calculate_deposit(self, service: dict) -> dict:
         """Calcule le dépôt requis selon le type de service"""

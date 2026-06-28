@@ -1,0 +1,213 @@
+CHECKLIST_HTML = '''<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Checklist Service - Kadio Coiffure</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; min-height: 100vh; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #1a1a2e; font-size: 24px; margin-bottom: 5px; }
+        .header p { color: #666; font-size: 14px; }
+        .employe-info { background: #1a1a2e; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+        .employe-info h2 { font-size: 20px; margin-bottom: 5px; }
+        .employe-info p { font-size: 14px; opacity: 0.8; }
+        .client-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .client-section label { display: block; font-weight: 600; color: #333; margin-bottom: 8px; }
+        .client-section input, .client-section select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+        .checklist-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .checklist-section h3 { color: #1a1a2e; margin-bottom: 20px; font-size: 18px; }
+        .check-item { display: flex; align-items: center; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; }
+        .check-item:hover { border-color: #e94560; background: #fff5f5; }
+        .check-item.active { border-color: #00d9ff; background: #e6f9ff; }
+        .check-item input[type="checkbox"] { width: 24px; height: 24px; margin-right: 15px; cursor: pointer; accent-color: #e94560; }
+        .check-item .icon { font-size: 24px; margin-right: 10px; }
+        .check-item .text { flex: 1; font-size: 16px; color: #333; }
+        .check-item .points { font-weight: bold; color: #e94560; font-size: 14px; }
+        .commentaire-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .commentaire-section textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; resize: vertical; min-height: 80px; font-family: inherit; }
+        .score-preview { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .score-preview .score-value { font-size: 48px; font-weight: bold; color: #00d9ff; }
+        .score-preview .score-bar { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-top: 15px; overflow: hidden; }
+        .score-preview .score-fill { height: 100%; background: linear-gradient(90deg, #00d9ff, #e94560); border-radius: 4px; transition: width 0.5s ease; }
+        .btn-submit { width: 100%; padding: 18px; background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-back { width: 100%; padding: 15px; background: #e0e0e0; color: #333; border: none; border-radius: 12px; font-size: 16px; cursor: pointer; }
+        .success-message { display: none; background: #d4edda; color: #155724; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .error-message { display: none; background: #f8d7da; color: #721c24; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Checklist Service</h1>
+        <p>Évaluez votre service après chaque client</p>
+    </div>
+    <div class="employe-info" id="employeInfo">
+        <h2>Connectez-vous pour commencer</h2>
+    </div>
+    <div id="loginSection">
+        <div class="client-section">
+            <label>📱 Votre numéro de téléphone</label>
+            <input type="tel" id="phoneInput" placeholder="+1514...">
+        </div>
+        <div class="client-section">
+            <label>🔑 Code PIN</label>
+            <input type="password" id="pinInput" placeholder="1234" maxlength="4">
+        </div>
+        <button class="btn-submit" onclick="login()">Se connecter</button>
+    </div>
+    <div id="checklistForm" style="display:none;">
+        <div class="client-section">
+            <label>👤 Nom du client</label>
+            <input type="text" id="clientNom" placeholder="Nom du client">
+        </div>
+        <div class="client-section">
+            <label>✂️ Service réalisé</label>
+            <select id="serviceType">
+                <option value="">-- Sélectionnez --</option>
+                <option value="locks">Locks</option>
+                <option value="tresses">Tresses</option>
+                <option value="coupe">Coupe</option>
+                <option value="barbier">Barbier</option>
+                <option value="retwist">Retwist</option>
+                <option value="interlock">Interlock</option>
+                <option value="coloration">Coloration</option>
+                <option value="soin">Soin</option>
+            </select>
+        </div>
+        <div class="checklist-section">
+            <h3>📝 Points de service (cochez ce qui a été fait)</h3>
+            <div class="check-item" onclick="toggleCheck(this, 'sourire')">
+                <input type="checkbox" id="sourire" data-field="sourire">
+                <span class="icon">😊</span><span class="text">Sourire et accueil chaleureux</span>
+                <span class="points">+1</span>
+            </div>
+            <div class="check-item" onclick="toggleCheck(this, 'guider')">
+                <input type="checkbox" id="guider" data-field="guider">
+                <span class="icon">🪑</span><span class="text">Guider le client vers le siège</span>
+                <span class="points">+1</span>
+            </div>
+            <div class="check-item" onclick="toggleCheck(this, 'offrir_boisson')">
+                <input type="checkbox" id="offrir_boisson" data-field="offrir_boisson">
+                <span class="icon">🥤</span><span class="text">Offrir une boisson</span>
+                <span class="points">+1</span>
+            </div>
+            <div class="check-item" onclick="toggleCheck(this, 'offrir_grignotine')">
+                <input type="checkbox" id="offrir_grignotine" data-field="offrir_grignotine">
+                <span class="icon">🍪</span><span class="text">Offrir une grignotine</span>
+                <span class="points">+1</span>
+            </div>
+            <div class="check-item" onclick="toggleCheck(this, 'gerer_attente')">
+                <input type="checkbox" id="gerer_attente" data-field="gerer_attente">
+                <span class="icon">⏱️</span><span class="text">Gérer le temps d'attente</span>
+                <span class="points">+1</span>
+            </div>
+            <div class="check-item" onclick="toggleCheck(this, 'telephone_ranger')">
+                <input type="checkbox" id="telephone_ranger" data-field="telephone_ranger">
+                <span class="icon">📱</span><span class="text">Téléphone rangé pendant le service</span>
+                <span class="points">+1</span>
+            </div>
+        </div>
+        <div class="commentaire-section">
+            <label>💬 Commentaire (optionnel)</label>
+            <textarea id="commentaire" placeholder="Notez ici un détail particulier..."></textarea>
+        </div>
+        <div class="score-preview">
+            <div class="score-value" id="scoreValue">0</div>
+            <div>sur 10</div>
+            <div class="score-bar"><div class="score-fill" id="scoreFill" style="width: 0%"></div></div>
+        </div>
+        <div class="success-message" id="successMessage">
+            <h3>✅ Checklist envoyée !</h3>
+            <p>Score: <span id="successScore">0</span>/10</p>
+        </div>
+        <div class="error-message" id="errorMessage"></div>
+        <button class="btn-submit" id="submitBtn" onclick="submitChecklist()">📤 Envoyer la checklist</button>
+        <button class="btn-back" onclick="resetForm()">🔄 Nouvelle checklist</button>
+    </div>
+    <script>
+        const API_URL = 'https://kadio-cerveau-production-9b8d.up.railway.app';
+        let employeId = null;
+        let employeNom = null;
+        function toggleCheck(element, field) {
+            const checkbox = element.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            element.classList.toggle('active', checkbox.checked);
+            updateScore();
+        }
+        function updateScore() {
+            const points = document.querySelectorAll('.check-item input:checked').length;
+            const score = (points / 6 * 10).toFixed(1);
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('scoreFill').style.width = (points / 6 * 100) + '%';
+        }
+        async function login() {
+            const phone = document.getElementById('phoneInput').value;
+            const pin = document.getElementById('pinInput').value;
+            try {
+                const response = await fetch(`${API_URL}/employe/login`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({telephone: phone, code: pin})
+                });
+                const data = await response.json();
+                if (data.success) {
+                    employeId = data.employe.id;
+                    employeNom = data.employe.nom;
+                    document.getElementById('employeInfo').innerHTML = `<h2>👤 ${employeNom}</h2><p>Checklist Service Client</p>`;
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('checklistForm').style.display = 'block';
+                } else { alert('Code PIN incorrect'); }
+            } catch (error) { alert('Erreur de connexion'); }
+        }
+        async function submitChecklist() {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true; submitBtn.textContent = 'Envoi en cours...';
+            const checklistData = {
+                employe_id: employeId,
+                date_service: new Date().toISOString().split('T')[0],
+                client_nom: document.getElementById('clientNom').value || null,
+                service: document.getElementById('serviceType').value || null,
+                sourire: document.getElementById('sourire').checked ? 1 : 0,
+                guider: document.getElementById('guider').checked ? 1 : 0,
+                offrir_boisson: document.getElementById('offrir_boisson').checked ? 1 : 0,
+                offrir_grignotine: document.getElementById('offrir_grignotine').checked ? 1 : 0,
+                gerer_attente: document.getElementById('gerer_attente').checked ? 1 : 0,
+                telephone_ranger: document.getElementById('telephone_ranger').checked ? 1 : 0,
+                commentaire: document.getElementById('commentaire').value || null
+            };
+            try {
+                const response = await fetch(`${API_URL}/checklist-service`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(checklistData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('successScore').textContent = data.score;
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                    submitBtn.style.display = 'none';
+                } else { throw new Error('Erreur'); }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Erreur: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+                submitBtn.disabled = false; submitBtn.textContent = '📤 Envoyer la checklist';
+            }
+        }
+        function resetForm() {
+            document.getElementById('clientNom').value = '';
+            document.getElementById('serviceType').value = '';
+            document.getElementById('commentaire').value = '';
+            document.querySelectorAll('.check-item input').forEach(cb => {
+                cb.checked = false; cb.closest('.check-item').classList.remove('active');
+            });
+            updateScore();
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'block';
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '📤 Envoyer la checklist';
+        }
+    </script>
+</body>
+</html>'''

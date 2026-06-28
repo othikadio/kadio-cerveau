@@ -58,7 +58,6 @@ class WhatsAppConnector:
     
     def send_template(self, to: str, template_name: str, params: Dict = None) -> Dict:
         """Envoie un template Twilio (si configuré)"""
-        # Templates utiles: booking_confirmation, payment_reminder, etc.
         return self.send_message(to, params.get("body", ""))
     
     # ========== IA KIMI ==========
@@ -98,271 +97,282 @@ class WhatsAppConnector:
     # ========== TRAITEMENT DES MESSAGES ENTRANTS ==========
     
     async def process_incoming_message(self, from_number: str, message_body: str, profile_name: str = "Client") -> str:
-        """
-        Point d'entrée principal: reçoit un message WhatsApp, traite avec IA, répond.
+        """Point d'entrée principal: reçoit un message WhatsApp, traite avec IA, répond."""
+        try:
+            # Initialiser la conversation si nouveau client
+            if from_number not in self.conversations:
+                self.conversations[from_number] = []
+                self.client_info[from_number] = {"name": profile_name, "phone": from_number}
+            
+            # Ajouter le message du client
+            self.conversations[from_number].append({
+                "role": "user",
+                "content": message_body,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # === ÉTAPE 1: ANALYSE D'INTENTION AVEC KIMI ===
+            intent_analysis = await self._analyze_intent(from_number, message_body)
+            intent = intent_analysis.get("intent", "general")
+            
+            # === ÉTAPE 2: TRAITER SELON L'INTENTION ===
+            if intent == "booking_request":
+                return await self._handle_booking_request(from_number, message_body, intent_analysis)
+            elif intent == "price_inquiry":
+                return await self._handle_price_inquiry(from_number, message_body, intent_analysis)
+            elif intent == "subscription_inquiry":
+                return await self._handle_subscription_inquiry(from_number, message_body, intent_analysis)
+            elif intent == "service_info":
+                return await self._handle_service_info(from_number, message_body, intent_analysis)
+            elif intent == "cancel_request":
+                return await self._handle_cancel_request(from_number, message_body, intent_analysis)
+            elif intent == "reschedule":
+                return await self._handle_reschedule(from_number, message_body, intent_analysis)
+            elif intent == "complaint":
+                return await self._handle_complaint(from_number, message_body, intent_analysis)
+            elif intent == "greeting":
+                return await self._handle_greeting(from_number, message_body)
+            elif intent == "availability":
+                return await self._handle_availability(from_number, message_body, intent_analysis)
+            else:
+                return await self._handle_general_conversation(from_number, message_body)
         
-        Flow:
-        1. Stocke le message
-        2. Analyse l'intention avec Kimi
-        3. Si RDV -> extrait infos -> crée RDV Square -> envoie dépôt
-        4. Si infos -> répond avec connaissances salon
-        5. Si prix -> liste les services
-        6. Si complaint -> escale à Othi
-        """
-        
-        # Initialiser la conversation si nouveau client
-        if from_number not in self.conversations:
-            self.conversations[from_number] = []
-            self.client_info[from_number] = {"name": profile_name, "phone": from_number}
-        
-        # Ajouter le message du client
-        self.conversations[from_number].append({
-            "role": "user",
-            "content": message_body,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # === ÉTAPE 1: ANALYSE D'INTENTION AVEC KIMI ===
-        intent_analysis = await self._analyze_intent(from_number, message_body)
-        intent = intent_analysis.get("intent", "general")
-        
-        # === ÉTAPE 2: TRAITER SELON L'INTENTION ===
-        
-        if intent == "booking_request":
-            # Le client veut prendre un RDV
-            return await self._handle_booking_request(from_number, message_body, intent_analysis)
-        
-        elif intent == "price_inquiry":
-            # Le client demande des prix
-            return await self._handle_price_inquiry(from_number, message_body, intent_analysis)
-        
-        elif intent == "service_info":
-            # Le client veut des infos sur un service
-            return await self._handle_service_info(from_number, message_body, intent_analysis)
-        
-        elif intent == "cancel_request":
-            # Annulation de RDV
-            return await self._handle_cancel_request(from_number, message_body, intent_analysis)
-        
-        elif intent == "reschedule":
-            # Modification de RDV
-            return await self._handle_reschedule(from_number, message_body, intent_analysis)
-        
-        elif intent == "complaint":
-            # Plainte -> escale à Othi
-            return await self._handle_complaint(from_number, message_body, intent_analysis)
-        
-        elif intent == "greeting":
-            # Salutation -> présentation salon
-            return await self._handle_greeting(from_number, message_body)
-        
-        elif intent == "availability":
-            # Demande de disponibilité
-            return await self._handle_availability(from_number, message_body, intent_analysis)
-        
-        else:
-            # Conversation générale -> réponse IA naturelle
-            return await self._handle_general_conversation(from_number, message_body)
+        except Exception as e:
+            print(f"ERREUR process_incoming_message: {e}")
+            return (
+                "Bonjour! 🖤\n\n"
+                "Je suis l'assistante de Kadio Coiffure.\n\n"
+                "Je peux vous aider à:\n"
+                "📅 Prendre un rendez-vous\n"
+                "💰 Connaître les prix\n"
+                "💇‍♀️ Découvrir nos services\n\n"
+                "Que souhaitez-vous faire?"
+            )
     
     # ========== HANDLERS SPÉCIFIQUES ==========
     
     async def _handle_booking_request(self, phone: str, message: str, analysis: Dict) -> str:
         """Gère une demande de rendez-vous"""
-        
-        # Essayer d'extraire les infos du message
-        extracted = await self._extract_booking_info(phone, message)
-        
-        missing = extracted.get("missing", [])
-        
-        # Si infos manquantes, demander
-        if missing:
-            return self._build_missing_info_response(extracted, missing)
-        
-        # Si on a toutes les infos -> créer le RDV
-        if extracted.get("ready"):
-            booking_data = {
-                "client_name": extracted.get("name", self.client_info.get(phone, {}).get("name", "Client")),
-                "phone": phone,
-                "service_name": extracted.get("service"),
-                "date": extracted.get("date"),
-                "time": extracted.get("time"),
-                "notes": extracted.get("notes", "Réservation via WhatsApp AI")
-            }
+        try:
+            extracted = await self._extract_booking_info(phone, message)
+            missing = extracted.get("missing", [])
             
-            # Créer dans Square
-            result = await self.square.create_appointment(booking_data)
+            if missing:
+                return self._build_missing_info_response(extracted, missing)
             
-            if result.get("success"):
-                # Construire la réponse de confirmation
-                response = (
-                    f"✅ *Rendez-vous confirmé !*\n\n"
-                    f"📅 {extracted.get('date')} à {extracted.get('time')}\n"
-                    f"💇‍♀️ {result.get('service')}\n"
-                    f"👤 Avec {result.get('coiffeur')}\n\n"
-                )
+            if extracted.get("ready"):
+                booking_data = {
+                    "client_name": extracted.get("name", self.client_info.get(phone, {}).get("name", "Client")),
+                    "phone": phone,
+                    "service_name": extracted.get("service"),
+                    "date": extracted.get("date"),
+                    "time": extracted.get("time"),
+                    "notes": extracted.get("notes", "Réservation via WhatsApp AI")
+                }
                 
-                # Si dépôt requis, envoyer le lien de paiement
-                if result.get("deposit") and result["deposit"].get("required"):
-                    deposit = result["deposit"]
-                    response += (
-                        f"💳 *Dépôt requis: {deposit['amount']}$* ({deposit['percent']}%)\n\n"
-                        f"Pour sécuriser votre RDV, payez ici:\n"
+                result = await self.square.create_appointment(booking_data)
+                
+                if result.get("success"):
+                    response = (
+                        f"✅ *Rendez-vous confirmé !*\n\n"
+                        f"📅 {extracted.get('date')} à {extracted.get('time')}\n"
+                        f"💇‍♀️ {result.get('service')}\n"
+                        f"👤 Avec {result.get('coiffeur')}\n\n"
                     )
                     
-                    # Envoyer le lien de paiement
-                    try:
-                        stripe_result = await self.stripe.send_deposit_link(
-                            phone=phone,
-                            service_name=result.get("service", ""),
-                            amount=deposit["amount"],
-                            booking_id=result.get("booking_id")
+                    if result.get("deposit") and result["deposit"].get("required"):
+                        deposit = result["deposit"]
+                        response += f"💳 *Dépôt requis: {deposit['amount']}$* ({deposit['percent']}%)\n\n"
+                        try:
+                            stripe_result = await self.stripe.send_deposit_link(
+                                phone=phone,
+                                service_name=result.get("service", ""),
+                                amount=deposit["amount"],
+                                booking_id=result.get("booking_id")
+                            )
+                            response += stripe_result.get("link", "")
+                            if stripe_result.get("message"):
+                                self.send_message(phone, stripe_result["message"])
+                        except:
+                            pass
+                    
+                    response += f"\n\n📍 Kadio Coiffure, 615 Antoinette-Robidoux, Longueuil\n"
+                    response += f"📞 Questions? Répondez ici ou appelez {self.phone_number}"
+                    return response
+                else:
+                    error = result.get("error", "Erreur inconnue")
+                    return (
+                        f"⚠️ Je n'ai pas pu créer le rendez-vous : {error}\n\n"
+                        f"Essayez avec un autre créneau ou appelez-nous au {self.phone_number}"
+                    )
+            
+            return "Je n'ai pas bien compris. Pouvez-vous répéter la date et l'heure souhaitées?"
+        except Exception as e:
+            print(f"ERREUR _handle_booking_request: {e}")
+            return "Je vais vérifier les disponibilités. Un instant..."
+    
+    async def _handle_subscription_inquiry(self, phone: str, message: str, analysis: Dict) -> str:
+        """Répond à une demande d'abonnement"""
+        try:
+            service = analysis.get("service", "").lower()
+            if any(k in service for k in ["pixie", "fer", "boucle", "abonnement", "mensuel"]):
+                try:
+                    stripe_result = await self.stripe.send_subscription_link(
+                        phone=phone,
+                        customer_email=self.client_info.get(phone, {}).get("email", "")
+                    )
+                    if stripe_result.get("success"):
+                        return (
+                            f"🌀 *Abonnement Pixie cut au fer*\n\n"
+                            f"Prix: 50$/mois + taxes\n"
+                            f"Inclus chaque mois:\n"
+                            f"  • Coupe courte stylée\n"
+                            f"  • Boucles au fer à lisser\n"
+                            f"  • 2 lissages offerts par semaine\n\n"
+                            f"⚠️ Sans lavage ni shampoing\n\n"
+                            f"Pour activer votre abonnement:\n"
+                            f"{stripe_result.get('link')}\n\n"
+                            f"Merci de choisir Kadio Coiffure! 🖤"
                         )
-                        response += stripe_result.get("link", "")
-                        
-                        # Envoyer le message de paiement séparément
-                        if stripe_result.get("message"):
-                            self.send_message(phone, stripe_result["message"])
-                    except:
-                        response += self.stripe.link_base
-                
-                response += f"\n\n📍 Kadio Coiffure, 615 Antoinette-Robidoux, Longueuil\n"
-                response += f"📞 Questions? Répondez ici ou appelez {self.phone_number}"
-                
-                return response
-            else:
-                # Erreur création RDV
-                error = result.get("error", "Erreur inconnue")
-                return (
-                    f"⚠️ Je n'ai pas pu créer le rendez-vous : {error}\n\n"
-                    f"Essayez avec un autre créneau ou appelez-nous au {self.phone_number}"
-                )
-        
-        return "Je n'ai pas bien compris. Pouvez-vous répéter la date et l'heure souhaitées?"
+                except:
+                    pass
+            
+            return (
+                f"🌀 *Abonnements disponibles*\n\n"
+                f"• *Pixie cut au fer*: 50$/mois + taxes\n"
+                f"  Coupe + boucles au fer + 2 lissages/semaine\n\n"
+                f"Pour plus d'infos, demandez-moi le détail! 🖤"
+            )
+        except Exception as e:
+            print(f"ERREUR _handle_subscription_inquiry: {e}")
+            return "Je vais vérifier les abonnements disponibles."
     
     async def _handle_price_inquiry(self, phone: str, message: str, analysis: Dict) -> str:
         """Répond à une demande de prix"""
-        service = analysis.get("service", "")
-        
-        if service:
-            # Chercher le prix exact
-            svc = await self.square.find_service(service)
-            if svc:
-                price = svc.get("price", 0)
-                duration = svc.get("duration", 60)
-                return (
-                    f"💰 *{svc['name']}*\n\n"
-                    f"Prix: {price}$\n"
-                    f"Durée: ~{duration} min\n\n"
-                    f"Voulez-vous prendre un rendez-vous? Dites-moi quand! 📅"
-                )
-        
-        # Liste des services populaires
-        return (
-            "💰 *Tarifs Kadio Coiffure*\n\n"
-            "🔒 *Locks & Dreadlocks*\n"
-            "• Repousses gel: 75-95$\n"
-            "• Repousses crochet: 90-175$\n"
-            "• Extensions locks: 185-300$\n"
-            "• Dreadlocks neuves: 140-185$\n\n"
-            "🎀 *Tresses*\n"
-            "• Tresses simples: 35-55$\n"
-            "• Knotless braids: 120-155$\n"
-            "• Fulani braids: 100-145$\n\n"
-            "✂️ *Barbier*\n"
-            "• Coupe homme: 30-45$\n"
-            "• Coupe + barbe: 45-60$\n"
-            "• Coupe enfant: 25-35$\n\n"
-            "📅 Pour un RDV précis avec prix exact, dites-moi le service et la date!"
-        )
+        try:
+            service = analysis.get("service", "")
+            if service:
+                svc = await self.square.find_service(service)
+                if svc:
+                    price = svc.get("price", 0)
+                    duration = svc.get("duration", 60)
+                    return (
+                        f"💰 *{svc['name']}*\n\n"
+                        f"Prix: {price}$\n"
+                        f"Durée: ~{duration} min\n\n"
+                        f"Voulez-vous prendre un rendez-vous? Dites-moi quand! 📅"
+                    )
+            
+            return (
+                "💰 *Tarifs Kadio Coiffure*\n\n"
+                "🔒 *Locks & Dreadlocks*\n"
+                "• Repousses gel: 75-95$\n"
+                "• Repousses crochet: 90-175$\n"
+                "• Extensions locks: 185-300$\n"
+                "• Dreadlocks neuves: 140-185$\n\n"
+                "🎀 *Tresses*\n"
+                "• Tresses simples: 35-55$\n"
+                "• Knotless braids: 120-155$\n"
+                "• Fulani braids: 100-145$\n\n"
+                "✂️ *Barbier*\n"
+                "• Coupe homme: 30-45$\n"
+                "• Coupe + barbe: 45-60$\n"
+                "• Coupe enfant: 25-35$\n\n"
+                "📅 Pour un RDV précis avec prix exact, dites-moi le service et la date!"
+            )
+        except Exception as e:
+            print(f"ERREUR _handle_price_inquiry: {e}")
+            return "Je vais vérifier les tarifs. Un instant..."
     
     async def _handle_service_info(self, phone: str, message: str, analysis: Dict) -> str:
         """Donne des infos détaillées sur un service"""
-        service = analysis.get("service", "").lower()
-        
-        if any(k in service for k in ["lock", "dread"]):
-            return (
-                "🔒 *Locks & Dreadlocks - Spécialité Kadio*\n\n"
-                "Nos locticiens (Othi, Mariel, Raquel) sont des experts.\n\n"
-                "• *Repousses gel*: retwist avec gel de qualité, durée 1-2h\n"
-                "• *Repousses crochet*: crochet interlock pour locks matures, 1.5-3h\n"
-                "• *Repousses petit crochet*: crochet précis, 3h+, 175$\n"
-                "• *Extensions*: ajout de mèches, 2-4h\n"
-                "• *Dreadlocks neuves*: création complète, 2-3h\n\n"
-                "💡 Conseil: Pour les repousses, prévoir un RDV toutes les 4-6 semaines.\n\n"
-                "Quel type de locks avez-vous? Je peux vous recommander le meilleur soin."
-            )
-        
-        elif any(k in service for k in ["tresse", "braid", "natte"]):
-            return (
-                "🎀 *Tresses - Nos Coiffeuses*\n\n"
-                "Princesse, Aïcha et Ange sont nos spécialistes tresses.\n\n"
-                "• *Tresses simples*: rapides, 1-1.5h\n"
-                "• *Knotless braids*: sans nœuds, plus confortables, 2-4h\n"
-                "• *Fulani braids*: style ethnique, 2-3h\n"
-                "• *Twists*: twists deux brins, 1.5-3h\n\n"
-                "💡 Durée de vie: 2-4 semaines selon l'entretien.\n\n"
-                "Quel style de tresses vous intéresse?"
-            )
-        
-        elif any(k in service for k in ["barbe", "coupe", "barbier"]):
-            return (
-                "✂️ *Barbier - Wilfried & Mariel*\n\n"
-                "• *Coupe homme*: fade, dégradé, coupe classique\n"
-                "• *Coupe + barbe*: combo complet\n"
-                "• *Coupe enfant*: 25-35$\n"
-                "• *Shampoing + brushing*: aussi disponible\n\n"
-                "⏱️ Durée: 30-45 min\n"
-                "💡 Pas de dépôt requis pour le barbier!\n\n"
-                "Voulez-vous prendre un RDV?"
-            )
-        
-        return "Quel service vous intéresse? Je peux vous donner tous les détails!"
+        try:
+            service = analysis.get("service", "").lower()
+            if any(k in service for k in ["lock", "dread"]):
+                return (
+                    "🔒 *Locks & Dreadlocks - Spécialité Kadio*\n\n"
+                    "Nos locticiens (Othi, Mariel, Raquel) sont des experts.\n\n"
+                    "• *Repousses gel*: retwist avec gel de qualité, durée 1-2h\n"
+                    "• *Repousses crochet*: crochet interlock pour locks matures, 1.5-3h\n"
+                    "• *Repousses petit crochet*: crochet précis, 3h+, 175$\n"
+                    "• *Extensions*: ajout de mèches, 2-4h\n"
+                    "• *Dreadlocks neuves*: création complète, 2-3h\n\n"
+                    "💡 Conseil: Pour les repousses, prévoir un RDV toutes les 4-6 semaines.\n\n"
+                    "Quel type de locks avez-vous?"
+                )
+            elif any(k in service for k in ["tresse", "braid", "natte"]):
+                return (
+                    "🎀 *Tresses - Nos Coiffeuses*\n\n"
+                    "Princesse, Aïcha et Ange sont nos spécialistes.\n\n"
+                    "• *Tresses simples*: rapides, 1-1.5h\n"
+                    "• *Knotless braids*: sans nœuds, plus confortables, 2-4h\n"
+                    "• *Fulani braids*: style ethnique, 2-3h\n"
+                    "• *Twists*: twists deux brins, 1.5-3h\n\n"
+                    "💡 Durée de vie: 2-4 semaines.\n\n"
+                    "Quel style vous intéresse?"
+                )
+            elif any(k in service for k in ["barbe", "coupe", "barbier"]):
+                return (
+                    "✂️ *Barbier - Wilfried & Mariel*\n\n"
+                    "• *Coupe homme*: fade, dégradé, coupe classique\n"
+                    "• *Coupe + barbe*: combo complet\n"
+                    "• *Coupe enfant*: 25-35$\n"
+                    "• *Shampoing + brushing*: aussi disponible\n\n"
+                    "⏱️ Durée: 30-45 min\n"
+                    "💡 Pas de dépôt requis pour le barbier!\n\n"
+                    "Voulez-vous prendre un RDV?"
+                )
+            return "Quel service vous intéresse? Je peux vous donner tous les détails!"
+        except Exception as e:
+            print(f"ERREUR _handle_service_info: {e}")
+            return "Je vais vérifier nos services. Un instant..."
     
     async def _handle_greeting(self, phone: str, message: str) -> str:
         """Répond à une salutation"""
-        name = self.client_info.get(phone, {}).get("name", "")
-        greeting = f"Bonjour {name}!" if name else "Bonjour!"
-        
-        return (
-            f"{greeting} 🖤\n\n"
-            f"Je suis l'assistante virtuelle de *Kadio Coiffure*.\n\n"
-            f"Je peux vous aider à:\n"
-            f"📅 Prendre un rendez-vous\n"
-            f"💰 Connaître les prix\n"
-            f"💇‍♀️ Découvrir nos services\n"
-            f"📍 Voir nos horaires\n\n"
-            f"Que souhaitez-vous faire?"
-        )
+        try:
+            name = self.client_info.get(phone, {}).get("name", "")
+            greeting = f"Bonjour {name}!" if name else "Bonjour!"
+            return (
+                f"{greeting} 🖤\n\n"
+                f"Je suis l'assistante virtuelle de *Kadio Coiffure*.\n\n"
+                f"Je peux vous aider à:\n"
+                f"📅 Prendre un rendez-vous\n"
+                f"💰 Connaître les prix\n"
+                f"💇‍♀️ Découvrir nos services\n\n"
+                f"Que souhaitez-vous faire?"
+            )
+        except Exception as e:
+            print(f"ERREUR _handle_greeting: {e}")
+            return "Bonjour! Je suis l'assistante de Kadio Coiffure. Comment puis-je vous aider?"
     
     async def _handle_availability(self, phone: str, message: str, analysis: Dict) -> str:
         """Vérifie les disponibilités"""
-        date = analysis.get("date", "")
-        service = analysis.get("service", "")
-        
-        if not date:
-            return "Pour quelle date souhaitez-vous vérifier les disponibilités? (ex: vendredi, demain, 15 juin)"
-        
-        # Vérifier les créneaux
-        availability = await self.square.check_availability(date, service)
-        slots = availability.get("available_slots", [])
-        
-        if slots:
-            slots_text = "\n".join([f"• {s['time']}" for s in slots[:5]])
-            return (
-                f"📅 *Créneaux disponibles le {date}*\n\n"
-                f"{slots_text}\n\n"
-                f"Quel horaire vous convient?"
-            )
-        else:
-            return (
-                f"⚠️ Aucun créneau disponible le {date}.\n\n"
-                f"Essayez une autre date ou appelez-nous au {self.phone_number}"
-            )
+        try:
+            date = analysis.get("date", "")
+            service = analysis.get("service", "")
+            if not date:
+                return "Pour quelle date souhaitez-vous vérifier les disponibilités? (ex: vendredi, demain, 15 juin)"
+            
+            availability = await self.square.check_availability(date, service)
+            slots = availability.get("available_slots", [])
+            if slots:
+                slots_text = "\n".join([f"• {s['time']}" for s in slots[:5]])
+                return (
+                    f"📅 *Créneaux disponibles le {date}*\n\n"
+                    f"{slots_text}\n\n"
+                    f"Quel horaire vous convient?"
+                )
+            else:
+                return (
+                    f"⚠️ Aucun créneau disponible le {date}.\n\n"
+                    f"Essayez une autre date ou appelez-nous au {self.phone_number}"
+                )
+        except Exception as e:
+            print(f"ERREUR _handle_availability: {e}")
+            return "Je vais vérifier les disponibilités. Un instant..."
     
     async def _handle_cancel_request(self, phone: str, message: str, analysis: Dict) -> str:
         """Gère une demande d'annulation"""
-        # Trouver les RDV du client
-        # Note: il faudrait stocker le mapping client -> booking_id
         return (
             "⚠️ Pour annuler votre rendez-vous, merci de nous appeler au "
             f"{self.phone_number} ou de préciser votre nom et la date du RDV.\n\n"
@@ -379,7 +389,6 @@ class WhatsAppConnector:
     
     async def _handle_complaint(self, phone: str, message: str, analysis: Dict) -> str:
         """Gère une plainte -> escale à Othi"""
-        # Notifier Othi
         try:
             self.send_message(
                 self.client_info.get("othi_phone", "+15149195970"),
@@ -397,283 +406,145 @@ class WhatsAppConnector:
     
     async def _handle_general_conversation(self, phone: str, message: str) -> str:
         """Réponse IA naturelle pour les conversations générales"""
-        
-        # Contexte du salon pour Kimi
-        context = self._build_salon_context()
-        
-        messages = [
-            {"role": "system", "content": context},
-            *self.conversations[phone][-5:],  # Derniers 5 messages
-        ]
-        
-        response = await self.ask_kimi(messages, temperature=0.8)
-        
-        return response
+        try:
+            context = self._build_salon_context()
+            messages = [
+                {"role": "system", "content": context},
+                *self.conversations[phone][-5:],
+            ]
+            response = await self.ask_kimi(messages, temperature=0.8)
+            return response
+        except Exception as e:
+            print(f"ERREUR _handle_general_conversation: {e}")
+            return (
+                "Bonjour! 🖤\n\n"
+                "Je suis l'assistante de Kadio Coiffure.\n\n"
+                "Je peux vous aider à:\n"
+                "📅 Prendre un rendez-vous\n"
+                "💰 Connaître les prix\n"
+                "💇‍♀️ Découvrir nos services\n\n"
+                "Que souhaitez-vous faire?"
+            )
     
-    # ========== EXTRACtion D'INFOS ==========
+    # ========== EXTRACTION D'INFOS ==========
     
     async def _extract_booking_info(self, phone: str, message: str) -> Dict:
         """Extrait les informations de RDV du message avec Kimi"""
-        
-        extraction_prompt = f"""
-Tu es un assistant de salon de coiffure. Extrais les informations de rendez-vous du message client.
-
-Message: "{message}"
-
-Extrais et retourne UNIQUEMENT un JSON avec cette structure:
-{{
-    "name": "nom du client si mentionné",
-    "service": "service demandé (locks, tresses, barbier, etc.)",
-    "date": "date au format YYYY-MM-DD (déduite de 'vendredi', 'demain', etc.)",
-    "time": "heure au format HH:MM",
-    "notes": "infos supplémentaires",
-    "ready": true/false,
-    "missing": ["liste des infos manquantes: name, service, date, time"]
-}}
-
-Aujourd'hui est le {datetime.now().strftime('%Y-%m-%d')}.
-Si le client dit "vendredi", c'est le prochain vendredi.
-Si le client dit "demain", c'est demain.
-Si le client dit "cette semaine", suggère des créneaux.
-
-Retourne UNIQUEMENT le JSON, pas d'explication.
-"""
-        
-        messages = [{"role": "user", "content": extraction_prompt}]
-        
         try:
+            extraction_prompt = f"""Tu es un assistant de salon de coiffure. Extrais les informations de rendez-vous du message client.
+Message: "{message}"
+Extrais et retourne UNIQUEMENT un JSON avec cette structure:
+{{"name": "nom du client", "service": "service", "date": "YYYY-MM-DD", "time": "HH:MM", "notes": "", "ready": true/false, "missing": ["name","service","date","time"]}}
+Aujourd'hui est le {datetime.now().strftime('%Y-%m-%d')}.
+Retourne UNIQUEMENT le JSON."""
+            
+            messages = [{"role": "user", "content": extraction_prompt}]
             response = await self.ask_kimi(messages, temperature=0.1)
-            # Extraire le JSON de la réponse
+            
             import re
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 extracted = json.loads(json_match.group())
-                
-                # Sauvegarder le nom du client
                 if extracted.get("name"):
                     self.client_info[phone]["name"] = extracted["name"]
-                
                 return extracted
-        except:
-            pass
+        except Exception as e:
+            print(f"ERREUR _extract_booking_info: {e}")
         
         return {"ready": False, "missing": ["service", "date", "time"]}
     
     async def _analyze_intent(self, phone: str, message: str) -> Dict:
         """Analyse l'intention du message avec Kimi"""
-        
-        intent_prompt = f"""
-Analyse l'intention du message client pour un salon de coiffure.
-
-Message: "{message}"
-
-Retourne UNIQUEMENT un JSON:
-{{
-    "intent": "booking_request|price_inquiry|service_info|cancel_request|reschedule|complaint|greeting|availability|general",
-    "service": "service mentionné si identifiable",
-    "date": "date mentionnée si identifiable",
-    "time": "heure mentionnée si identifiable",
-    "confidence": "high|medium|low"
-}}
-
-Intents:
-- booking_request: veut prendre RDV
-- price_inquiry: demande les prix
-- service_info: veut savoir ce qu'on fait
-- cancel_request: veut annuler
-- reschedule: veut changer date/heure
-- complaint: mécontent
-- greeting: salutation simple
-- availability: demande les créneaux
-- general: conversation normale
-
-Retourne UNIQUEMENT le JSON.
-"""
-        
-        messages = [{"role": "user", "content": intent_prompt}]
-        
         try:
+            intent_prompt = f"""Analyse l'intention du message pour un salon de coiffure.
+Message: "{message}"
+Retourne UNIQUEMENT un JSON:
+{{"intent": "booking_request|price_inquiry|service_info|cancel_request|reschedule|complaint|greeting|availability|general", "service": "", "date": "", "time": "", "confidence": "high|medium|low"}}
+Retourne UNIQUEMENT le JSON."""
+            
+            messages = [{"role": "user", "content": intent_prompt}]
             response = await self.ask_kimi(messages, temperature=0.1)
+            
             import re
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
-        except:
-            pass
+        except Exception as e:
+            print(f"ERREUR _analyze_intent: {e}")
         
         return {"intent": "general", "confidence": "low"}
     
     # ========== UTILITAIRES ==========
     
     def _build_salon_context(self) -> str:
-        """Construit le contexte expert du salon pour Kimi - connaissances techniques afro"""
-        return f"""
-Tu es KADIO, l'assistante virtuelle experte de Kadio Coiffure, un salon de coiffure afro-caribéen à Longueuil, QC.
-
-🎯 **TON RÔLE**: Tu es une EXPERTE en coiffure afro. Tu ne fais pas semblant. Tu connais les techniques, les produits, les textures de cheveux crépus, frisés, bouclés. Tu parles avec assurance et chaleur.
-
-📍 **SALON**: 615 Antoinette-Robidoux, Longueuil, QC
-📞 **TÉL**: {self.phone_number}
-
-⏰ **HORAIRES**:
-- Lun: 12h-19h (BARBIER UNIQUEMENT)
-- Mar: FERMÉ
-- Mer: 10h-19h
-- Jeu: 10h-21h
-- Ven: 10h-21h
-- Sam: 10h-21h
-- Dim: 10h-17h
-
----
-
-👥 **ÉQUIPE & SPÉCIALITÉS**:
-
-**🔒 LOCKS & DREADLOCKS** (Experts: Othi, Mariel, Raquel)
-- **Othi** (propriétaire): Locticien EXPERT + Barbier. 10+ ans expérience. Maîtrise toutes techniques.
-- **Mariel**: Locticien + Barbier + Brushings. Polyvalent, technique précise.
-- **Raquel**: Locticienne (actuellement inactive, revient bientôt).
-
-Techniques locks:
-• **Retwist au gel**: Pour locks matures. Gel naturel sans résidu. 1-2h. 75-95$
-• **Interlock/crochet**: Pour locks très matures ou racines épaisses. Crochet métal ou bois. 1.5-3h. 90-175$
-• **Petit crochet**: Technique précise pour sections fines. 3h+. 175$
-• **Extensions locks**: Ajout mèches synthétiques ou naturelles. 2-4h. 185-300$
-• **Dreadlocks neuves**: Création complète. Twist & rip, backcomb, ou crochet. 2-3h. 140-185$
-• **Réparations locks**: Locks cassées, affaiblies. Couture, re-attache. Sur devis.
-• **Coloration locks**: Teinture sans ammoniaque. 50-80$
-
-Conseils locks:
-- Retwist toutes les 4-6 semaines
-- Pas d'huile lourde sur racines (ça glisse)
-- Dormir avec bonnet satin ou taie d'oreiller
-- Shampoing clarifiant 1x/mois
-
----
-
-🎀 **TRESSES AFRICAINES** (Experts: Princesse, Aïcha, Ange)
-- **Princesse**: Coiffeuse spécialiste tresses. Rapide, créative.
-- **Aïcha**: Coiffeuse + Semi-locticienne. Repousses locks OK, PAS extensions.
-- **Ange**: Coiffeuse + Semi-locticienne. Même profil qu'Aïcha.
-
-Styles tresses:
-• **Knotless braids**: Sans nœuds aux racines. Plus confort, moins tension. 2-4h. 120-155$
-• **Fulani braids**: Style peul, tresse centrale + boucles côtés. 2-3h. 100-145$
-• **Box braids**: Classiques, carrées. Toutes tailles. 2-4h. 90-140$
-• **Cornrows**: Tresses collées au cuir chevelu. 1-2h. 35-75$
-• **Twists**: Deux brins torsadés. Havana twists, passion twists. 1.5-3h. 90-120$
-• **Lemonade braids**: Tresses côté, style Beyoncé. 2-3h. 100-130$
-• **Bantu knots**: Petits chignons. + tresses si demandé. 1-2h. 55-85$
-• **Tresses enfants**: Plus petites sections, patience. 1-2h. 35-55$
-
-Durée vie: 2-4 semaines. Entretien: mousse hydratante, bonnet satin.
-
----
-
-✂️ **BARBIER** (Experts: Wilfried, Mariel, Othi)
-- **Wilfried**: Barbier spécialisé. Fade, dégradé, design. Shampoing inclus.
-- **Mariel**: Barbier + Brushings. Technique femme aussi.
-- **Othi**: Toutes coupes homme/femme/enfant.
-
-Services:
-• **Coupe homme**: Fade, dégradé, afro cut, buzz. 30-45 min. 30-45$
-• **Coupe + barbe**: Combo complet. Rasoir chaud. 45-60 min. 45-60$
-• **Coupe enfant**: Garçon/fille. 25-35 min. 25-35$
-• **Barbe seule**: Taille, rasage, soin. 20-30 min. 20-30$
-• **Shampoing + brushing**: Toutes textures. 30-60 min. 40-65$
-• **Coupe femme**: Dégradé, coupe courte, shape up. 30-45 min. 35-50$
-
-⚠️ Pas de dépôt pour barbier. Paiement sur place.
-
----
-
-💅 **MANUCURE** (Marianne Bérubé)
-• Vernis classique, gel, semi-permanent
-• Soin des mains, cuticules
-• Sur réservation uniquement
-
----
-
-💰 **DÉPÔT DE SÉCURITÉ**:
-- Locks: 20% (ex: 175$ → dépôt 35$)
-- Tresses: 20% (ex: 120$ → dépôt 24$)
-- Barbier: PAS de dépôt
-- Manucure: PAS de dépôt
-
-Le dépôt est remisé sur le service final. Non-remboursable si annulation <24h.
-
----
-
-🗣️ **TON STYLE DE RÉPONSE**:
-- Chaleureuse, pro, avec un ton afro-caribéen authentique
-- Emojis naturels, pas trop
-- Tu connais les réponses aux questions techniques (quel crochet, quelle technique, combien de temps...)
-- Tu recommandes le bon expert selon le service
-- Si plainte: excuse immédiate, escalade à Othi
-- Tu parles français, tu peux mélanger un peu d'anglais si le client le fait
-- Tu n'inventes JAMAIS de prix. Tu donnes les prix réels du salon.
-- Si tu ne sais pas, tu dis "Je vais vérifier avec Othi"
-"""
-
+        """Construit le contexte expert du salon pour Kimi"""
+        return f"""Tu es KADIO, l'assistante virtuelle experte de Kadio Coiffure à Longueuil, QC.
+📍 615 Antoinette-Robidoux | 📞 {self.phone_number}
+⏰ Lun: 12h-19h (barbier), Mar: fermé, Mer-Dim: 10h-21h/17h
+Équipe: Othi (locticien+barbier), Mariel (locticien+barbier), Raquel (locticienne), Princesse/Aïcha/Ange (tresses), Wilfried (barbier).
+Services: Locks (75-300$), Tresses (35-155$), Barbier (25-60$), Manucure, Abonnement Pixie cut (50$/mois).
+Réponds en français, chaleureuse, pro, connais les techniques afro."""
     
     def _build_missing_info_response(self, extracted: Dict, missing: List[str]) -> str:
         """Construit une réponse demandant les infos manquantes"""
-        
-        name = extracted.get("name", "")
-        greeting = f"{name}, " if name else ""
-        
-        if "service" in missing:
-            return (
-                f"{greeting}Quel service souhaitez-vous?\n\n"
-                f"🔒 *Locks* (retwist, crochet, extensions)\n"
-                f"🎀 *Tresses* (knotless, fulani, twists)\n"
-                f"✂️ *Barbier* (coupe, barbe, enfant)\n\n"
-                f"Dites-moi ce qui vous intéresse!"
-            )
-        
-        if "date" in missing:
-            service = extracted.get("service", "ce service")
-            return (
-                f"{greeting}Parfait pour *{service}*! 📅\n\n"
-                f"Quelle date souhaitez-vous?\n"
-                f"(ex: vendredi, demain, 15 juin)\n\n"
-                f"Nos horaires:\n"
-                f"• Lun: 12h-19h (barbier)\n"
-                f"• Mer-Dim: 10h-21h/17h\n"
-                f"• Mar: fermé"
-            )
-        
-        if "time" in missing:
-            date = extracted.get("date", "cette date")
-            return (
-                f"{greeting}Bien, le *{date}*! ⏰\n\n"
-                f"Quelle heure vous convient?\n"
-                f"(ex: 10h, 14h30, 16h)\n\n"
-                f"Je vais vérifier les disponibilités."
-            )
-        
-        return "Je vais vérifier ça pour vous. Un instant..."
+        try:
+            name = extracted.get("name", "")
+            greeting = f"{name}, " if name else ""
+            
+            if "service" in missing:
+                return (
+                    f"{greeting}Quel service souhaitez-vous?\n\n"
+                    f"🔒 *Locks* (retwist, crochet, extensions)\n"
+                    f"🎀 *Tresses* (knotless, fulani, twists)\n"
+                    f"✂️ *Barbier* (coupe, barbe, enfant)\n\n"
+                    f"Dites-moi ce qui vous intéresse!"
+                )
+            
+            if "date" in missing:
+                service = extracted.get("service", "ce service")
+                return (
+                    f"{greeting}Parfait pour *{service}*! 📅\n\n"
+                    f"Quelle date souhaitez-vous?\n"
+                    f"(ex: vendredi, demain, 15 juin)\n\n"
+                    f"Nos horaires:\n"
+                    f"• Lun: 12h-19h (barbier)\n"
+                    f"• Mer-Dim: 10h-21h/17h\n"
+                    f"• Mar: fermé"
+                )
+            
+            if "time" in missing:
+                date = extracted.get("date", "cette date")
+                return (
+                    f"{greeting}Bien, le *{date}*! ⏰\n\n"
+                    f"Quelle heure vous convient?\n"
+                    f"(ex: 10h, 14h30, 16h)\n\n"
+                    f"Je vais vérifier les disponibilités."
+                )
+            
+            return "Je vais vérifier ça pour vous. Un instant..."
+        except Exception as e:
+            print(f"ERREUR _build_missing_info_response: {e}")
+            return "Je vais vérifier les informations. Un instant..."
     
     # ========== WEBHOOK HANDLER ==========
     
     async def handle_webhook(self, request_data: Dict) -> str:
-        """
-        Point d'entrée pour le webhook Twilio WhatsApp.
-        Reçoit: {'From': 'whatsapp:+1234', 'Body': 'message', 'ProfileName': 'Nom'}
-        """
-        from_number = request_data.get("From", "").replace("whatsapp:", "")
-        message_body = request_data.get("Body", "")
-        profile_name = request_data.get("ProfileName", "Client")
-        
-        if not from_number or not message_body:
-            return "Erreur: données manquantes"
-        
-        # Traiter le message
-        response = await self.process_incoming_message(from_number, message_body, profile_name)
-        
-        # Envoyer la réponse
-        send_result = self.send_message(from_number, response)
-        
-        if not send_result.get("success"):
-            print(f"Erreur envoi WhatsApp: {send_result.get('error')}")
-        
-        return response
+        """Point d'entrée pour le webhook Twilio WhatsApp."""
+        try:
+            from_number = request_data.get("From", "").replace("whatsapp:", "")
+            message_body = request_data.get("Body", "")
+            profile_name = request_data.get("ProfileName", "Client")
+            
+            if not from_number or not message_body:
+                return "Erreur: données manquantes"
+            
+            response = await self.process_incoming_message(from_number, message_body, profile_name)
+            send_result = self.send_message(from_number, response)
+            
+            if not send_result.get("success"):
+                print(f"Erreur envoi WhatsApp: {send_result.get('error')}")
+            
+            return response
+        except Exception as e:
+            print(f"ERREUR handle_webhook: {e}")
+            return "Erreur lors du traitement du message"
