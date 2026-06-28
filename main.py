@@ -6686,17 +6686,27 @@ async def calculate_commission(request: Request):
             gain = 100
         else:
             gain = 150
-    else:
-        if montant <= 500:
-            gain = 50
-        elif montant <= 1000:
+    else:  # formation
+        # Barème formations Kadio:
+        # - Moins de 1000$ → 100$ récompense
+        # - 1000$ et plus → 200$ récompense
+        if montant < 1000:
             gain = 100
-        elif montant <= 2000:
-            gain = 200
         else:
-            gain = 300
+            gain = 200
     
     return {"montant": montant, "type": type_depense, "gain": gain}
+
+
+@app.get("/api/formations")
+async def get_formations():
+    """Liste des formations disponibles"""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('SELECT * FROM formations ORDER BY prix')
+    formations = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return {"formations": formations}
 
 if __name__ == "__main__":
     import uvicorn
