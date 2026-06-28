@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kadio Coiffure - Tableau de Bord Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 24px; }
+        .header .subtitle { opacity: 0.8; font-size: 14px; }
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 15px 25px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        .nav-tab:hover { color: #667eea; }
+        .nav-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: #f8f9ff;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+        .stat-icon.blue { background: #e3f2fd; }
+        .stat-icon.green { background: #e8f5e9; }
+        .stat-icon.orange { background: #fff3e0; }
+        .stat-icon.red { background: #ffebee; }
+        .stat-icon.purple { background: #f3e5f5; }
+        .stat-icon.yellow { background: #fffde7; }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-danger { background: #ff6b6b; color: white; }
+        .btn-success { background: #4CAF50; color: white; }
+        .btn-warning { background: #FFC107; color: #333; }
+
+        /* Tables */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table th, .table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .table th {
+            font-weight: 600;
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .table tr:hover { background: #f9f9f9; }
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-success { background: #e8f5e9; color: #2e7d32; }
+        .badge-warning { background: #fff3e0; color: #ef6c00; }
+        .badge-danger { background: #ffebee; color: #c62828; }
+        .badge-info { background: #e3f2fd; color: #1565c0; }
+
+        /* Employee cards */
+        .employee-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .employee-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .employee-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .employee-info { flex: 1; }
+        .employee-name { font-weight: 700; font-size: 16px; }
+        .employee-role { font-size: 13px; color: #888; margin-top: 3px; }
+        .employee-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+        .employee-status.offline { background: #ccc; }
+
+        /* Alert items */
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        .alert-item.warning { background: #fff3e0; }
+        .alert-item.danger { background: #ffebee; }
+        .alert-item.info { background: #e3f2fd; }
+        .alert-icon { font-size: 24px; }
+        .alert-content { flex: 1; }
+        .alert-title { font-weight: 600; }
+        .alert-text { font-size: 13px; color: #666; margin-top: 3px; }
+        .alert-time { font-size: 12px; color: #999; }
+
+        /* Ranking */
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .rank-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .rank-number.gold { background: #FFD700; color: #333; }
+        .rank-number.silver { background: #C0C0C0; color: #333; }
+        .rank-number.bronze { background: #CD7F32; color: white; }
+        .rank-number.other { background: #f0f0f0; color: #666; }
+        .rank-score { margin-left: auto; font-weight: 700; font-size: 20px; color: #667eea; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .modal-header { margin-bottom: 20px; }
+        .modal-title { font-size: 20px; font-weight: 700; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        .loading.show { display: flex; }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .employee-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; text-align: center; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>👑 Tableau de Bord Admin</h1>
+            <div class="subtitle">Kadio Coiffure - Gestion du Salon</div>
+        </div>
+        <div id="currentDate"></div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showSection('overview')">📊 Vue d'ensemble</button>
+        <button class="nav-tab" onclick="showSection('tour-controle')">🏰 Tour de Contrôle</button>
+        <button class="nav-tab" onclick="showSection('coffre-fort')">💎 Coffre-Fort</button>
+        <button class="nav-tab" onclick="showSection('alertes-notation')">🚨 Alertes Notation</button>
+        <button class="nav-tab" onclick="showSection('bd-clients')">🗃️ Base Clients</button>
+        <button class="nav-tab" onclick="showSection('alerts')">🔔 Alertes</button>
+        <button class="nav-tab" onclick="showSection('employees')">👥 Employés</button>
+        <button class="nav-tab" onclick="showSection('tasks')">🧹 Tâches</button>
+        <button class="nav-tab" onclick="showSection('sanctions')">⚠️ Sanctions</button>
+        <button class="nav-tab" onclick="showSection('retraits')">💰 Retraits</button>
+        <button class="nav-tab" onclick="showSection('notes')">📝 Notes secrètes</button>
+        <button class="nav-tab" onclick="showSection('ranking')">🏆 Classement</button>
+    </div>
+
+    <div class="container">
+        <!-- ========== OVERVIEW ========== -->
+        <div class="section active" id="overview">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">👥</div>
+                    <div>
+                        <div class="stat-value" id="statEmployees">-</div>
+                        <div class="stat-label">Employés actifs</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">✅</div>
+                    <div>
+                        <div class="stat-value" id="statPresent">-</div>
+                        <div class="stat-label">Présents aujourd'hui</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">🧹</div>
+                    <div>
+                        <div class="stat-value" id="statTasks">-</div>
+                        <div class="stat-label">Tâches aujourd'hui</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">⭐</div>
+                    <div>
+                        <div class="stat-value" id="statReviews">-</div>
+                        <div class="stat-label">Avis ce mois</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red">🔔</div>
+                    <div>
+                        <div class="stat-value" id="statAlerts">-</div>
+                        <div class="stat-label">Alertes actives</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow">🏆</div>
+                    <div>
+                        <div class="stat-value" id="statTopScore">-</div>
+                        <div class="stat-label">Meilleur score</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📈 Activité aujourd'hui</h3>
+                </div>
+                <div id="todayActivity">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- ========== TOUR DE CONTRÔLE (Supervision Staff Totale) ========== -->
+        <div class="section" id="tour-controle">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>🏰 Tour de Contrôle - Supervision Staff Totale</h2>
+                <button class="btn btn-primary" onclick="rafraichirTourControle()">🔄 Rafraîchir</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px; margin-bottom:20px;">
+                <div class="card" style="border-left:4px solid #667eea;">
+                    <div class="card-header">
+                        <h3 class="card-title">👥 Sélectionner un employé</h3>
+                    </div>
+                    <select id="tourEmployeSelect" onchange="chargerHistoriqueEmploye(this.value)" style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd;">
+                        <option value="">Choisir un employé...</option>
+                    </select>
+                </div>
+
+                <div class="card" style="border-left:4px solid #ff6b6b;">
+                    <div class="card-header">
+                        <h3 class="card-title">🔧 Override Admin</h3>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <button class="btn" style="background:#FFC107; color:#333;" onclick="showOverrideRetard()">⏰ Override Retard</button>
+                        <button class="btn" style="background:#FFC107; color:#333;" onclick="showOverrideSolde()">💰 Override Solde</button>
+                        <button class="btn" style="background:#FFC107; color:#333;" onclick="showOverrideTache()">🧹 Override Tâche</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="historiqueEmploye" style="margin-top:20px;">
+                <div style="text-align:center; color:#888; padding:40px;">
+                    Sélectionnez un employé pour voir son historique complet
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== COFFRE-FORT VIRTUEL ========== -->
+        <div class="section" id="coffre-fort">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>💎 Coffre-Fort Virtuel - Parrainage & Fidélité</h2>
+                <button class="btn btn-primary" onclick="showGenererQR()">📱 Générer QR Code</button>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom:20px;">
+                <div class="stat-card">
+                    <div class="stat-icon blue">👥</div>
+                    <div>
+                        <div class="stat-value" id="cfTotalClients">-</div>
+                        <div class="stat-label">Clients actifs</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">💰</div>
+                    <div>
+                        <div class="stat-value" id="cfTotalSolde">-</div>
+                        <div class="stat-label">Solde total parrainage</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">📱</div>
+                    <div>
+                        <div class="stat-value" id="cfTotalQR">-</div>
+                        <div class="stat-label">QR codes actifs</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="coffreFortList">Chargement...</div>
+        </div>
+
+        <!-- ========== ALERTES NOTATION ========== -->
+        <div class="section" id="alertes-notation">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>🚨 Interception des Flux de Notation</h2>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="background:#ffebee; color:#c62828;" onclick="filtrerAlertesNotation('critiques')">🔴 Critiques (< 3/5)</button>
+                    <button class="btn" style="background:#fff3e0; color:#ef6c00;" onclick="filtrerAlertesNotation('moyennes')">🟠 Moyennes (3/5)</button>
+                    <button class="btn" onclick="filtrerAlertesNotation('toutes')">📋 Toutes</button>
+                </div>
+            </div>
+
+            <div id="alertesNotationList">Chargement...</div>
+        </div>
+        
+        <!-- ========== BASE DE DONNÉES CLIENT & PARRAINAGE ========== -->
+        <div class="section" id="bd-clients">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>🗃️ Base de Données Client & Parrainage Intégrale</h2>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" onclick="rafraichirBDClients()">🔄 Rafraîchir</button>
+                    <button class="btn" style="background:#667eea; color:white;" onclick="filtrerBDClients('abonnes')">💎 Abonnés</button>
+                    <button class="btn" style="background:#4CAF50; color:white;" onclick="filtrerBDClients('parrains')">🎯 Parrains</button>
+                    <button class="btn" style="background:#FFC107; color:#333;" onclick="filtrerBDClients('tous')">📋 Tous</button>
+                </div>
+            </div>
+            
+            <div class="stats-grid" style="margin-bottom:20px;">
+                <div class="stat-card">
+                    <div class="stat-icon blue">👥</div>
+                    <div>
+                        <div class="stat-value" id="bdTotalClients">-</div>
+                        <div class="stat-label">Total clients</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">💎</div>
+                    <div>
+                        <div class="stat-value" id="bdTotalAbonnes">-</div>
+                        <div class="stat-label">Abonnés</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">🎯</div>
+                    <div>
+                        <div class="stat-value" id="bdTotalParrains">-</div>
+                        <div class="stat-label">Parrains actifs</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon yellow">💰</div>
+                    <div>
+                        <div class="stat-value" id="bdSoldeGlobal">-</div>
+                        <div class="stat-label">Solde global virtuel</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-bottom:20px; border-left:4px solid #667eea;">
+                <div class="card-header">
+                    <h3 class="card-title">🌳 Arbre du Parrainage (Qui parraine qui)</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn" style="background:#ffebee; color:#c62828;" onclick="filtrerArbre('actif')">🟢 Actifs</button>
+                        <button class="btn" onclick="filtrerArbre('tous')">📋 Tous</button>
+                    </div>
+                </div>
+                <div id="arbreParrainageList">
+                    <div style="text-align:center; color:#888; padding:30px;">Chargement de l'arbre du parrainage...</div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-bottom:20px; border-left:4px solid #4CAF50;">
+                <div class="card-header">
+                    <h3 class="card-title">💎 Registre des Abonnés (Forfaits)</h3>
+                    <div style="font-size:13px; color:#888;">
+                        Tous les clients ayant souscrit à un abonnement
+                    </div>
+                </div>
+                <div id="registreAbonnesList">
+                    <div style="text-align:center; color:#888; padding:30px;">Chargement du registre des abonnés...</div>
+                </div>
+            </div>
+            
+            <div class="card" style="border-left:4px solid #FFC107;">
+                <div class="card-header">
+                    <h3 class="card-title">💰 Suivi des Flux Financiers Virtuels</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn" style="background:#e8f5e9; color:#2e7d32;" onclick="trierFlux('solde_desc')">📉 Solde le plus élevé</button>
+                        <button class="btn" style="background:#fff3e0; color:#ef6c00;" onclick="trierFlux('solde_asc')">📈 Solde le plus faible</button>
+                        <button class="btn" onclick="trierFlux('date')">📅 Date d'inscription</button>
+                    </div>
+                </div>
+                <div id="fluxFinanciersList">
+                    <div style="text-align:center; color:#888; padding:30px;">Chargement du suivi des flux...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ========== EMPLOYEES ========== -->
+        <div class="section" id="employees">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>👥 Gestion des Employés</h2>
+                <button class="btn btn-primary" onclick="showAddEmployeeModal()">+ Ajouter un employé</button>
+            </div>
+            <div id="employeesList" class="employee-grid">Chargement...</div>
+        </div>
+
+        <!-- ========== POINTAGES ========== -->
+        <div class="section" id="pointages">
+            <h2 style="margin-bottom:20px;">🕐 Pointages du jour</h2>
+            <div class="card">
+                <table class="table" id="pointagesTable">
+                    <thead>
+                        <tr>
+                            <th>Employé</th>
+                            <th>Arrivée</th>
+                            <th>Départ</th>
+                            <th>Pause</th>
+                            <th>Durée</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== TASKS ========== -->
+        <div class="section" id="tasks">
+            <h2 style="margin-bottom:20px;">🧹 Tâches Ménagères</h2>
+            <div id="tasksList">Chargement...</div>
+        </div>
+
+        <!-- ========== SANCTIONS ========== -->
+        <div class="section" id="sanctions">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>⚠️ Registre des Sanctions</h2>
+                <button class="btn btn-danger" onclick="showAddSanctionModal()">+ Émettre une sanction</button>
+            </div>
+            <div id="sanctionsList">Chargement...</div>
+        </div>
+
+        <!-- ========== RANKING ========== -->
+        <div class="section" id="ranking">
+            <h2 style="margin-bottom:20px;">🏆 Course à l'Employé du Mois</h2>
+            <div id="rankingList">Chargement...</div>
+        </div>
+
+        <!-- ========== RETRAITS CASH PARRAINAGE ========== -->
+        <div class="section" id="retraits">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>💰 Validation des Retraits Cash</h2>
+                <div>
+                    <button class="btn" style="background:#e8f5e9; color:#2e7d32;" onclick="filtrerRetraits('en_attente')">🟢 En attente</button>
+                    <button class="btn" style="background:#e3f2fd; color:#1565c0;" onclick="filtrerRetraits('valide')">✅ Validés</button>
+                    <button class="btn" style="background:#ffebee; color:#c62828;" onclick="filtrerRetraits('refuse')">❌ Refusés</button>
+                    <button class="btn" onclick="filtrerRetraits('')">📋 Tous</button>
+                </div>
+            </div>
+            <div id="retraitsList">Chargement...</div>
+        </div>
+
+        <!-- ========== NOTES SECRÈTES ========== -->
+        <div class="section" id="notes">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>📝 Modération Notation Bidirectionnelle</h2>
+                <div>
+                    <button class="btn" style="background:#ffebee; color:#c62828;" onclick="filtrerNotes('1')">🔴 1-2/5</button>
+                    <button class="btn" style="background:#fff3e0; color:#ef6c00;" onclick="filtrerNotes('3')">🟠 3/5</button>
+                    <button class="btn" style="background:#e8f5e9; color:#2e7d32;" onclick="filtrerNotes('4')">🟢 4-5/5</button>
+                    <button class="btn" onclick="filtrerNotes('')">📋 Toutes</button>
+                </div>
+            </div>
+            <div id="notesSecrettesList">Chargement...</div>
+        </div>
+    </div>
+
+    <!-- ========== MODALS ========== -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalContent">
+            <!-- Dynamic content -->
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div style="margin-top:15px; color:#666;">Chargement...</div>
+    </div>
+
+    <script>
+        const API_URL = 'https://kadio-cerveau-production-9b8d.up.railway.app';
+
+        // ========== NAVIGATION ==========
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load section data
+            if (sectionId === 'alerts') loadAlerts();
+            if (sectionId === 'employees') loadEmployees();
+            if (sectionId === 'tasks') loadTasks();
+            if (sectionId === 'sanctions') loadSanctions();
+            if (sectionId === 'retraits') loadRetraits();
+            if (sectionId === 'notes') loadNotesSecrettes();
+            if (sectionId === 'tour-controle') rafraichirTourControle();
+            if (sectionId === 'coffre-fort') loadCoffreFort();
+            if (sectionId === 'alertes-notation') loadAlertesNotation();
+            if (sectionId === 'bd-clients') rafraichirBDClients();
+            if (sectionId === 'ranking') loadRanking();
+        }
+
+        // ========== LOAD OVERVIEW STATS ==========
+        async function loadOverview() {
+            try {
+                const res = await fetch(`${API_URL}/dashboard/stats`);
+                const data = await res.json();
+
+                document.getElementById('statEmployees').textContent = data.total_employes || 0;
+                document.getElementById('statPresent').textContent = data.employes_actifs || 0;
+                document.getElementById('statTasks').textContent = data.total_taches || 0;
+                document.getElementById('statReviews').textContent = data.total_notes || 0;
+                document.getElementById('statAlerts').textContent = data.alertes_actives || 0;
+                document.getElementById('statTopScore').textContent = data.meilleur_score || '-';
+
+                // Afficher les retards du jour dans la section activité
+                const today = new Date().toISOString().split('T')[0];
+                const resEmp = await fetch(`${API_URL}/employes`);
+                const employees = await resEmp.json();
+
+                let retardsCount = 0;
+                for (const emp of employees) {
+                    const presRes = await fetch(`${API_URL}/employes/${emp.id}/pointages?date_debut=${today}&date_fin=${today}`);
+                    const pointages = await presRes.json();
+                    if (pointages.length > 0 && pointages[0].retard_minutes > 0) {
+                        retardsCount++;
+                    }
+                }
+
+                const alertsRes = await fetch(`${API_URL}/alertes?statut=nouveau`);
+                const alerts = await alertsRes.json();
+                const critiquesCount = alerts.filter(a => a.niveau === 'critique').length;
+
+                const todayActivity = document.getElementById('todayActivity');
+                todayActivity.innerHTML = `
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+                        <div class="stat-card" style="background: ${retardsCount > 0 ? '#ffebee' : '#e8f5e9'};">
+                            <div class="stat-icon ${retardsCount > 0 ? 'red' : 'green'}">⏰</div>
+                            <div>
+                                <div class="stat-value">${retardsCount}</div>
+                                <div class="stat-label">Retard(s) aujourd'hui</div>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="background: ${critiquesCount > 0 ? '#ffebee' : '#e8f5e9'};">
+                            <div class="stat-icon ${critiquesCount > 0 ? 'red' : 'green'}">🚨</div>
+                            <div>
+                                <div class="stat-value">${critiquesCount}</div>
+                                <div class="stat-label">Alertes critiques</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">🧹</div>
+                            <div>
+                                <div class="stat-value">${data.taches_en_attente || 0}</div>
+                                <div class="stat-label">Tâches en attente</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (err) {
+                console.error('Erreur stats:', err);
+            }
+        }
+
+        // ========== LOAD EMPLOYEES ==========
+        async function loadEmployees() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/employes`);
+                const employees = await res.json();
+
+                const container = document.getElementById('employeesList');
+                if (employees.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:#888;">Aucun employé</p>';
+                    return;
+                }
+
+                container.innerHTML = employees.map(emp => `
+                    <div class="employee-card" style="cursor:pointer;" onclick="voirDossierEmploye(${emp.id})">
+                        <div class="employee-avatar">${emp.nom.charAt(0)}</div>
+                        <div class="employee-info">
+                            <div class="employee-name">${emp.nom}</div>
+                            <div class="employee-role">${emp.role || ''} • ${emp.specialite || ''} • ${emp.echelon || 'Novice'}</div>
+                            <div style="font-size:12px; color:#888; margin-top:5px;">
+                                📞 ${emp.telephone || '-'} | 💰 ${emp.salaire_horaire || '-'}$/h | Score: ${emp.score_mensuel || '-'}/100
+                            </div>
+                        </div>
+                        <div class="employee-status ${emp.statut_presence || 'offline'}" title="${emp.statut_presence || 'Non connecté'}"></div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error('Erreur employés:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ========== LOAD POINTAGES ==========
+        async function loadPointages() {
+            showLoading();
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const res = await fetch(`${API_URL}/employes`);
+                const employees = await res.json();
+
+                const tbody = document.querySelector('#pointagesTable tbody');
+                tbody.innerHTML = '';
+
+                for (const emp of employees) {
+                    const presRes = await fetch(`${API_URL}/employes/${emp.id}/pointages?date_debut=${today}&date_fin=${today}`);
+                    const pointages = await presRes.json();
+
+                    if (pointages.length > 0) {
+                        const p = pointages[0];
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${emp.nom}</td>
+                                <td>${p.heure_arrivee || '-'}</td>
+                                <td>${p.heure_depart || '-'}</td>
+                                <td>${p.duree_pause_minutes || 0} min</td>
+                                <td>${p.duree_travail_minutes || '-'} min</td>
+                                <td><span class="badge ${p.statut === 'complet' ? 'badge-success' : 'badge-warning'}">${p.statut}</span></td>
+                            </tr>
+                        `;
+                    } else {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${emp.nom}</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td><span class="badge badge-danger">Non pointé</span></td>
+                            </tr>
+                        `;
+                    }
+                }
+
+            } catch (err) {
+                console.error('Erreur pointages:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ========== LOAD TASKS ==========
+        async function loadTasks() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/taches-menageres`);
+                const tasks = await res.json();
+
+                const container = document.getElementById('tasksList');
+                const zones = [...new Set(tasks.map(t => t.zone))];
+
+                container.innerHTML = zones.map(zone => {
+                    const zoneTasks = tasks.filter(t => t.zone === zone);
+                    return `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">${getZoneIcon(zone)} ${zone}</h3>
+                                <span class="badge badge-info">${zoneTasks.length} tâches</span>
+                            </div>
+                            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                                ${zoneTasks.map(t => `
+                                    <div style="background:#f5f5f5; padding:10px 15px; border-radius:20px; font-size:13px;">
+                                        ${t.nom} (${t.duree_estimee_minutes}min)
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Erreur tâches:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function getZoneIcon(zone) {
+            const icons = {
+                'salon': '✂️', 'salle_attente': '🛋️', 'toilettes': '🚻',
+                'cuisine': '☕', 'stockage': '📦', 'exterieur': '🌿'
+            };
+            return icons[zone] || '📍';
+        }
+
+        // ========== LOAD RANKING ==========
+        async function loadRanking() {
+            showLoading();
+            try {
+                // Simulated ranking based on mock data
+                const container = document.getElementById('rankingList');
+                container.innerHTML = `
+                    <div class="ranking-item">
+                        <div class="rank-number gold">1</div>
+                        <div style="font-size:30px; margin-right:10px;">👑</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;">Employé du mois</div>
+                            <div style="font-size:13px; color:#888;">À déterminer</div>
+                        </div>
+                        <div class="rank-score">-</div>
+                    </div>
+                    <div style="text-align:center; color:#888; padding:30px;">
+                        Le classement sera disponible une fois les données collectées.
+                    </div>
+                `;
+            } catch (err) {
+                console.error('Erreur classement:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ========== LOAD ALERTES ==========
+        async function loadAlerts() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/alertes`);
+                const alerts = await res.json();
+
+                const container = document.getElementById('alertsList');
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">✅ Aucune alerte active</div>';
+                    return;
+                }
+
+                // Filtres par criticité
+                const filtres = `
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <button class="btn" style="background:#ffebee; color:#c62828;" onclick="filtrerAlertes('critique')">🔴 Urgent (${alerts.filter(a => a.niveau === 'critique' && a.statut === 'nouveau').length})</button>
+                        <button class="btn" style="background:#fff3e0; color:#ef6c00;" onclick="filtrerAlertes('attention')">🟠 Attention (${alerts.filter(a => a.niveau === 'attention' && a.statut === 'nouveau').length})</button>
+                        <button class="btn" style="background:#e8f5e9; color:#2e7d32;" onclick="filtrerAlertes('info')">🟢 Info (${alerts.filter(a => a.niveau === 'info' && a.statut === 'nouveau').length})</button>
+                        <button class="btn" style="background:#f5f5f5;" onclick="filtrerAlertes('tous')">Tous</button>
+                    </div>
+                `;
+
+                const alertesHtml = alerts.map(a => {
+                    const niveauClass = a.niveau === 'critique' ? 'danger' : (a.niveau === 'attention' ? 'warning' : 'info');
+                    const icon = a.niveau === 'critique' ? '🚨' : (a.niveau === 'attention' ? '⚠️' : 'i️');
+                    return `
+                        <div class="alert-item ${niveauClass}" data-niveau="${a.niveau}">
+                            <span class="alert-icon">${icon}</span>
+                            <div class="alert-content">
+                                <div class="alert-title">${a.type}</div>
+                                <div class="alert-text">${a.description}</div>
+                                <div class="alert-time">${a.date_alerte || ''}</div>
+                            </div>
+                            ${a.statut === 'nouveau' ? `<button class="btn btn-success" style="font-size:12px; padding:5px 10px;" onclick="marquerAlerteTraitee(${a.id})">✓ Traité</button>` : '<span class="badge badge-success">Traité</span>'}
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = filtres + alertesHtml;
+            } catch (err) {
+                console.error('Erreur alertes:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function filtrerAlertes(niveau) {
+            const items = document.querySelectorAll('.alert-item');
+            items.forEach(item => {
+                if (niveau === 'tous' || item.dataset.niveau === niveau) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        async function marquerAlerteTraitee(alerteId) {
+            try {
+                const res = await fetch(`${API_URL}/alertes/${alerteId}/traiter`, { method: 'PATCH' });
+                if (res.ok) {
+                    showToast('Alerte marquée comme traitée');
+                    loadAlerts();
+                    loadOverview();
+                }
+            } catch (err) {
+                console.error('Erreur:', err);
+            }
+        }
+
+        // ========== LOAD SANCTIONS ==========
+        async function loadSanctions() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/sanctions`);
+                const sanctions = await res.json();
+
+                const container = document.getElementById('sanctionsList');
+                if (sanctions.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">✅ Aucune sanction enregistrée</div>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="card">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Employé</th>
+                                    <th>Type</th>
+                                    <th>Raison</th>
+                                    <th>Suspension</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${sanctions.map(s => `
+                                    <tr>
+                                        <td>${s.date_sanction || '-'}</td>
+                                        <td>${s.employe_nom || 'Employé #' + s.employe_id}</td>
+                                        <td><span class="badge badge-danger">${s.type}</span></td>
+                                        <td>${s.raison || '-'}</td>
+                                        <td>${s.duree_suspension_jours ? s.duree_suspension_jours + ' jours' : '-'}</td>
+                                        <td><span class="badge ${s.statut === 'actif' ? 'badge-danger' : 'badge-success'}">${s.statut || 'Actif'}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (err) {
+                console.error('Erreur sanctions:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ========== LOAD RANKING ==========
+        async function loadRanking() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/classement/employes?period=mois`);
+                const data = await res.json();
+
+                const container = document.getElementById('rankingList');
+
+                // Historique employés du mois
+                const resHistorique = await fetch(`${API_URL}/employe-du-mois`);
+                const historique = await resHistorique.json();
+
+                let historiqueHtml = '';
+                if (historique && historique.employe_id) {
+                    historiqueHtml = `
+                        <div class="card" style="margin-bottom:20px;">
+                            <div class="card-header">
+                                <h3 class="card-title">🏆 Dernier gagnant</h3>
+                            </div>
+                            <div class="ranking-item">
+                                <div class="rank-number gold">👑</div>
+                                <div style="flex:1;">
+                                    <div style="font-weight:700;">${historique.raison || 'Employé du mois'}</div>
+                                    <div style="font-size:13px; color:#888;">Score: ${historique.score_total || '-'}/100</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Classement en cours
+                if (!data.classement || data.classement.length === 0) {
+                    container.innerHTML = historiqueHtml + '<div style="text-align:center; color:#888; padding:30px;">Données en cours de collecte...</div>';
+                    return;
+                }
+
+                const classementHtml = data.classement.map((emp, i) => {
+                    const rankClass = i === 0 ? 'gold' : (i === 1 ? 'silver' : (i === 2 ? 'bronze' : 'other'));
+                    return `
+                        <div class="ranking-item">
+                            <div class="rank-number ${rankClass}">${i + 1}</div>
+                            <div class="employee-avatar" style="width:40px; height:40px; font-size:16px;">${emp.nom.charAt(0)}</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:700;">${emp.nom}</div>
+                                <div style="font-size:13px; color:#888;">${emp.role || ''} • ${emp.specialite || ''}</div>
+                            </div>
+                            <div class="rank-score">${Math.round(emp.score_total || 0)}/100</div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = historiqueHtml + classementHtml;
+            } catch (err) {
+                console.error('Erreur classement:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ========== MODALS ==========
+        function showAddEmployeeModal() {
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-header">
+                    <h3 class="modal-title">+ Ajouter un employé</h3>
+                </div>
+                <div class="form-group">
+                    <label>Nom complet</label>
+                    <input type="text" id="newEmpName" placeholder="Prénom Nom">
+                </div>
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="tel" id="newEmpPhone" placeholder="+1 514 999 9999">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="newEmpEmail" placeholder="email@exemple.com">
+                </div>
+                <div class="form-group">
+                    <label>Rôle</label>
+                    <select id="newEmpRole">
+                        <option value="coiffeur">Coiffeur</option>
+                        <option value="barbier">Barbier</option>
+                        <option value="receptionniste">Réceptionniste</option>
+                        <option value="manager">Manager</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Spécialité</label>
+                    <select id="newEmpSpecialite">
+                        <option value="locks">Locks</option>
+                        <option value="tresses">Tresses</option>
+                        <option value="coupe">Coupe</option>
+                        <option value="barbe">Barbe</option>
+                        <option value="coloration">Coloration</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Échelon</label>
+                    <select id="newEmpEchelon">
+                        <option value="novice">Novice</option>
+                        <option value="intermediaire">Intermédiaire</option>
+                        <option value="confirme">Confirmé</option>
+                        <option value="expert">Expert</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Salaire horaire ($)</label>
+                    <input type="number" id="newEmpSalaire" placeholder="20.00" step="0.5">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeModal()" style="background:#f5f5f5;">Annuler</button>
+                    <button class="btn btn-primary" onclick="addEmployee()">Ajouter</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        function showAddSanctionModal() {
+            // Charger la liste des employés pour le select
+            fetch(`${API_URL}/employes`).then(r => r.json()).then(employees => {
+                const options = employees.map(e => `<option value="${e.id}">${e.nom}</option>`).join('');
+
+                document.getElementById('modalContent').innerHTML = `
+                    <div class="modal-header">
+                        <h3 class="modal-title">⚠️ Émettre une sanction</h3>
+                    </div>
+                    <div class="form-group">
+                        <label>Employé concerné</label>
+                        <select id="sanctionEmpId">${options}</select>
+                    </div>
+                    <div class="form-group">
+                        <label>Type de sanction</label>
+                        <select id="sanctionType">
+                            <option value="retard">Retard répété</option>
+                            <option value="absence">Absence non justifiée</option>
+                            <option value="manque_respect">Manque de respect</option>
+                            <option value="negligence">Négligence</option>
+                            <option value="suspension">Suspension</option>
+                            <option value="autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description / Motif</label>
+                        <textarea id="sanctionDesc" rows="3" placeholder="Décrivez l'incident en détail..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Durée de suspension (jours, si applicable)</label>
+                        <input type="number" id="sanctionDuree" placeholder="0" min="0">
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn" onclick="closeModal()" style="background:#f5f5f5;">Annuler</button>
+                        <button class="btn btn-danger" onclick="addSanction()">📋 Enregistrer la sanction</button>
+                    </div>
+                `;
+                document.getElementById('modalOverlay').classList.add('show');
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+        }
+
+        // ========== ACTIONS ==========
+        // ========== VOIR DOSSIER EMPLOYÉ ==========
+        async function voirDossierEmploye(employeId) {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/employe/${employeId}/page?telephone=admin&code=admin`);
+                const data = await res.json();
+
+                document.getElementById('modalContent').innerHTML = `
+                    <div class="modal-header">
+                        <h3 class="modal-title">📁 Dossier complet - ${data.employe?.nom || 'Employé'}</h3>
+                    </div>
+                    <div style="max-height:400px; overflow-y:auto;">
+                        <div class="form-group">
+                            <label>📞 Téléphone</label>
+                            <div>${data.employe?.telephone || '-'}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>📧 Email</label>
+                            <div>${data.employe?.email || '-'}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>🏆 Échelon</label>
+                            <div>${data.employe?.echelon || '-'}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>⭐ Score mensuel</label>
+                            <div>${data.score_mois?.score_total || '-'}/100</div>
+                        </div>
+                        <div class="form-group">
+                            <label>📅 Pointages récents (${data.pointages?.length || 0})</label>
+                            <div style="font-size:12px; color:#666;">
+                                ${(data.pointages || []).slice(0, 5).map(p =>
+                                    `${p.date_journee}: ${p.heure_arrivee || '-'} → ${p.heure_depart || '-'} (${p.retard_minutes || 0}min retard)`
+                                ).join('<br>')}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>⭐ Notes clients (${data.notes_clients?.length || 0})</label>
+                            <div style="font-size:12px; color:#666;">
+                                ${(data.notes_clients || []).slice(0, 3).map(n =>
+                                    `${n.note_moyenne}/5 - ${n.commentaire || 'Pas de commentaire'}`
+                                ).join('<br>')}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>⚠️ Sanctions (${data.sanctions?.length || 0})</label>
+                            <div style="font-size:12px; color:#666;">
+                                ${(data.sanctions || []).slice(0, 3).map(s =>
+                                    `${s.date_sanction}: ${s.type} - ${s.raison}`
+                                ).join('<br>') || 'Aucune sanction'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn" onclick="closeModal()" style="background:#f5f5f5;">Fermer</button>
+                    </div>
+                `;
+                document.getElementById('modalOverlay').classList.add('show');
+            } catch (err) {
+                console.error('Erreur:', err);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function addEmployee() {
+            const data = {
+                nom: document.getElementById('newEmpName').value,
+                telephone: document.getElementById('newEmpPhone').value,
+                email: document.getElementById('newEmpEmail').value,
+                role: document.getElementById('newEmpRole').value,
+                specialite: document.getElementById('newEmpSpecialite').value,
+                echelon: document.getElementById('newEmpEchelon').value,
+                salaire_horaire: parseFloat(document.getElementById('newEmpSalaire').value),
+                date_embauche: new Date().toISOString().split('T')[0]
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/employes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    closeModal();
+                    loadEmployees();
+                    showToast('Employé ajouté avec succès !');
+                } else {
+                    const err = await res.json();
+                    alert('Erreur: ' + err.detail);
+                }
+            } catch (err) {
+                console.error('Erreur ajout:', err);
+            }
+        }
+
+        async function addSanction() {
+            const employeId = document.getElementById('sanctionEmpId').value;
+            const type = document.getElementById('sanctionType').value;
+            const description = document.getElementById('sanctionDesc').value;
+            const duree = document.getElementById('sanctionDuree').value || 0;
+
+            if (!description.trim()) {
+                alert('Veuillez décrire le motif de la sanction');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/sanctions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employe_id: parseInt(employeId),
+                        type: type,
+                        raison: description,
+                        details: description,
+                        duree_suspension_jours: parseInt(duree)
+                    })
+                });
+
+                if (res.ok) {
+                    closeModal();
+                    loadSanctions();
+                    showToast('✅ Sanction enregistrée dans le registre légal');
+                } else {
+                    const err = await res.json();
+                    alert('Erreur: ' + err.detail);
+                }
+            } catch (err) {
+                console.error('Erreur:', err);
+            }
+        }
+
+        // ========== RETRAITS CASH PARRAINAGE ==========
+        async function loadRetraits() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/retraits`);
+                const retraits = await res.json();
+                window.allRetraits = retraits;
+                renderRetraits(retraits);
+            } catch (err) {
+                console.error('Erreur retraits:', err);
+                document.getElementById('retraitsList').innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Erreur de chargement</div>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function filtrerRetraits(statut) {
+            if (!statut) {
+                renderRetraits(window.allRetraits || []);
+                return;
+            }
+            const filtres = (window.allRetraits || []).filter(r => r.statut === statut);
+            renderRetraits(filtres);
+        }
+
+        function renderRetraits(retraits) {
+            const container = document.getElementById('retraitsList');
+            if (!retraits || retraits.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">✅ Aucune demande de retrait</div>';
+                return;
+            }
+
+            container.innerHTML = retraits.map(r => {
+                const statutColors = {
+                    'en_attente': { bg: '#fff3e0', color: '#ef6c00', text: '🟠 En attente' },
+                    'valide': { bg: '#e8f5e9', color: '#2e7d32', text: '✅ Validé' },
+                    'refuse': { bg: '#ffebee', color: '#c62828', text: '❌ Refusé' },
+                    'remis': { bg: '#e3f2fd', color: '#1565c0', text: '💵 Remis' }
+                };
+                const s = statutColors[r.statut] || statutColors['en_attente'];
+
+                const actions = r.statut === 'en_attente' ? `
+                    <div style="display:flex; gap:8px; margin-top:12px;">
+                        <button class="btn btn-success" onclick="validerRetrait(${r.id}, 'valide')" style="flex:1;">✅ Valider</button>
+                        <button class="btn btn-danger" onclick="validerRetrait(${r.id}, 'refuse')" style="flex:1;">❌ Refuser</button>
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="card" style="border-left:4px solid ${s.color}; margin-bottom:15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:700; font-size:16px;">${r.client_nom || r.client_telephone}</div>
+                                <div style="font-size:13px; color:#888; margin-top:4px;">${r.motif} - ${new Date(r.date_demande).toLocaleDateString('fr-FR')}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700; font-size:22px; color:${s.color};">${r.montant}$</div>
+                                <span style="background:${s.bg}; color:${s.color}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">${s.text}</span>
+                            </div>
+                        </div>
+                        ${r.commentaire ? `<div style="margin-top:10px; font-size:13px; color:#666; font-style:italic;">💬 ${r.commentaire}</div>` : ''}
+                        ${actions}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function validerRetrait(demandeId, statut) {
+            const commentaire = prompt(statut === 'valide' ? 'Commentaire (optionnel) :' : 'Raison du refus (obligatoire) :');
+            if (statut === 'refuse' && !commentaire) return;
+
+            try {
+                const res = await fetch(`${API_URL}/retraits/${demandeId}/valider`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ statut, commentaire })
+                });
+
+                if (res.ok) {
+                    showToast(statut === 'valide' ? '✅ Retrait validé' : '❌ Retrait refusé');
+                    loadRetraits();
+                } else {
+                    const err = await res.json();
+                    alert('Erreur: ' + err.detail);
+                }
+            } catch (err) {
+                console.error('Erreur:', err);
+            }
+        }
+
+        // ========== NOTES SECRÈTES ==========
+        async function loadNotesSecrettes() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/notes-employes`);
+                const notes = await res.json();
+                window.allNotes = notes;
+                renderNotes(notes);
+            } catch (err) {
+                console.error('Erreur notes:', err);
+                document.getElementById('notesSecrettesList').innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Erreur de chargement</div>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function filtrerNotes(noteFiltre) {
+            if (!noteFiltre) {
+                renderNotes(window.allNotes || []);
+                return;
+            }
+            const filtres = (window.allNotes || []).filter(n => {
+                if (noteFiltre === '1') return n.note <= 2;
+                if (noteFiltre === '3') return n.note === 3;
+                if (noteFiltre === '4') return n.note >= 4;
+                return true;
+            });
+            renderNotes(filtres);
+        }
+
+        function renderNotes(notes) {
+            const container = document.getElementById('notesSecrettesList');
+            if (!notes || notes.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">✅ Aucune note secrète enregistrée</div>';
+                return;
+            }
+
+            container.innerHTML = notes.map(n => {
+                const noteColors = n.note <= 2 ? { bg: '#ffebee', color: '#c62828' } :
+                                   n.note === 3 ? { bg: '#fff3e0', color: '#ef6c00' } :
+                                   { bg: '#e8f5e9', color: '#2e7d32' };
+
+                const tags = n.tags ? JSON.parse(n.tags).map(t => `<span style="background:#f0f0f0; padding:3px 8px; border-radius:12px; font-size:11px; margin-right:5px;">${t}</span>`).join('') : '';
+
+                return `
+                    <div class="card" style="border-left:4px solid ${noteColors.color}; margin-bottom:15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:700; font-size:16px;">${n.client_nom || n.client_telephone}</div>
+                                <div style="font-size:13px; color:#888; margin-top:4px;">Par ${n.employe_nom} - ${n.date_rdv ? new Date(n.date_rdv).toLocaleDateString('fr-FR') : 'Sans date'}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700; font-size:22px; color:${noteColors.color};">${n.note}/5</div>
+                                <span style="background:${noteColors.bg}; color:${noteColors.color}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
+                                    ${n.note <= 2 ? '🔴 Critique' : n.note === 3 ? '🟠 Moyen' : '🟢 Positif'}
+                                </span>
+                            </div>
+                        </div>
+                        ${n.commentaire ? `<div style="margin-top:10px; font-size:14px; color:#333; background:#f9f9f9; padding:10px; border-radius:8px;">📝 ${n.commentaire}</div>` : ''}
+                        ${tags ? `<div style="margin-top:10px;">${tags}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== NOTES SECRÈTES ==========
+        async function loadNotesSecrettes() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/notes-employes`);
+                const notes = await res.json();
+                window.allNotes = notes;
+                renderNotes(notes);
+            } catch (err) {
+                console.error('Erreur notes:', err);
+                document.getElementById('notesSecrettesList').innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Erreur de chargement</div>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function filtrerNotes(noteFiltre) {
+            if (!noteFiltre) {
+                renderNotes(window.allNotes || []);
+                return;
+            }
+            const filtres = (window.allNotes || []).filter(n => {
+                if (noteFiltre === '1') return n.note <= 2;
+                if (noteFiltre === '3') return n.note === 3;
+                if (noteFiltre === '4') return n.note >= 4;
+                return true;
+            });
+            renderNotes(filtres);
+        }
+
+        function renderNotes(notes) {
+            const container = document.getElementById('notesSecrettesList');
+            if (!notes || notes.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">✅ Aucune note secrète enregistrée</div>';
+                return;
+            }
+
+            container.innerHTML = notes.map(n => {
+                const noteColors = n.note <= 2 ? { bg: '#ffebee', color: '#c62828' } :
+                                   n.note === 3 ? { bg: '#fff3e0', color: '#ef6c00' } :
+                                   { bg: '#e8f5e9', color: '#2e7d32' };
+
+                const tags = n.tags ? JSON.parse(n.tags).map(t => `<span style="background:#f0f0f0; padding:3px 8px; border-radius:12px; font-size:11px; margin-right:5px;">${t}</span>`).join('') : '';
+
+                return `
+                    <div class="card" style="border-left:4px solid ${noteColors.color}; margin-bottom:15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:700; font-size:16px;">${n.client_nom || n.client_telephone}</div>
+                                <div style="font-size:13px; color:#888; margin-top:4px;">Par ${n.employe_nom} - ${n.date_rdv ? new Date(n.date_rdv).toLocaleDateString('fr-FR') : 'Sans date'}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700; font-size:22px; color:${noteColors.color};">${n.note}/5</div>
+                                <span style="background:${noteColors.bg}; color:${noteColors.color}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
+                                    ${n.note <= 2 ? '🔴 Critique' : n.note === 3 ? '🟠 Moyen' : '🟢 Positif'}
+                                </span>
+                            </div>
+                        </div>
+                        ${n.commentaire ? `<div style="margin-top:10px; font-size:14px; color:#333; background:#f9f9f9; padding:10px; border-radius:8px;">📝 ${n.commentaire}</div>` : ''}
+                        ${tags ? `<div style="margin-top:10px;">${tags}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== TOUR DE CONTRÔLE (Supervision Staff Totale) ==========
+
+        async function rafraichirTourControle() {
+            showLoading();
+            try {
+                // Charger la liste des employés
+                const res = await fetch(`${API_URL}/employes`);
+                const employes = await res.json();
+
+                const select = document.getElementById('tourEmployeSelect');
+                select.innerHTML = '<option value="">Choisir un employé...</option>' +
+                    employes.map(e => `<option value="${e.id}">${e.nom} (${e.role})</option>`).join('');
+
+                showToast('✅ Tour de contrôle prêt');
+            } catch (err) {
+                console.error('Erreur tour contrôle:', err);
+                showToast('❌ Erreur chargement');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function chargerHistoriqueEmploye(employeId) {
+            if (!employeId) return;
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/admin/staff/${employeId}/historique-complet`);
+                const data = await res.json();
+
+                const container = document.getElementById('historiqueEmploye');
+                container.innerHTML = `
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:15px;">
+                        <div class="card" style="border-left:4px solid #4CAF50;">
+                            <div class="card-header"><h3 class="card-title">⏰ Pointages (${data.total_pointages})</h3></div>
+                            <div style="max-height:300px; overflow-y:auto;">
+                                ${data.pointages.map(p => `
+                                    <div style="padding:10px; border-bottom:1px solid #eee;">
+                                        <div style="font-weight:600;">${p.date_journee}</div>
+                                        <div style="font-size:12px; color:#888;">
+                                            Arrivée: ${p.heure_arrivee || '-'} | Départ: ${p.heure_depart || '-'} | Retard: ${p.retard ? 'Oui' : 'Non'}
+                                        </div>
+                                    </div>
+                                `).join('') || '<div style="padding:20px; color:#888; text-align:center;">Aucun pointage</div>'}
+                            </div>
+                        </div>
+
+                        <div class="card" style="border-left:4px solid #ff6b6b;">
+                            <div class="card-header"><h3 class="card-title">⚠️ Sanctions (${data.total_sanctions})</h3></div>
+                            <div style="max-height:300px; overflow-y:auto;">
+                                ${data.sanctions.map(s => `
+                                    <div style="padding:10px; border-bottom:1px solid #eee;">
+                                        <div style="font-weight:600;">${s.type}</div>
+                                        <div style="font-size:12px; color:#888;">${s.raison} - ${s.date_sanction}</div>
+                                    </div>
+                                `).join('') || '<div style="padding:20px; color:#888; text-align:center;">Aucune sanction</div>'}
+                            </div>
+                        </div>
+
+                        <div class="card" style="border-left:4px solid #667eea;">
+                            <div class="card-header"><h3 class="card-title">⭐ Notes clients</h3></div>
+                            <div style="max-height:300px; overflow-y:auto;">
+                                ${data.notes_clients.map(n => `
+                                    <div style="padding:10px; border-bottom:1px solid #eee;">
+                                        <div style="font-weight:600;">${n.note_moyenne}/5</div>
+                                        <div style="font-size:12px; color:#888;">${n.service} - ${n.created_at}</div>
+                                    </div>
+                                `).join('') || '<div style="padding:20px; color:#888; text-align:center;">Aucune note</div>'}
+                            </div>
+                        </div>
+
+                        <div class="card" style="border-left:4px solid #FFC107;">
+                            <div class="card-header"><h3 class="card-title">🧹 Tâches ménagères (${data.total_taches})</h3></div>
+                            <div style="max-height:300px; overflow-y:auto;">
+                                ${data.taches_menageres.map(t => `
+                                    <div style="padding:10px; border-bottom:1px solid #eee;">
+                                        <div style="font-weight:600;">${t.nom}</div>
+                                        <div style="font-size:12px; color:#888;">${t.statut} - ${t.date_validation || 'Non validée'}</div>
+                                    </div>
+                                `).join('') || '<div style="padding:20px; color:#888; text-align:center;">Aucune tâche</div>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                console.error('Erreur historique:', err);
+                document.getElementById('historiqueEmploye').innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Erreur de chargement</div>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- BOUTONS OVERRIDE ---
+
+        function showOverrideRetard() {
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-header"><h3 class="modal-title">⏰ Override Retard</h3></div>
+                <div class="form-group">
+                    <label>Employé ID</label>
+                    <input type="number" id="ovRetardEmpId" placeholder="ID de l'employé">
+                </div>
+                <div class="form-group">
+                    <label>Date (YYYY-MM-DD)</label>
+                    <input type="text" id="ovRetardDate" placeholder="2024-01-15">
+                </div>
+                <div class="form-group">
+                    <label>Nouvelle heure d'arrivée</label>
+                    <input type="text" id="ovRetardHeure" placeholder="08:55">
+                </div>
+                <div class="form-group">
+                    <label>Raison</label>
+                    <textarea id="ovRetardRaison" placeholder="Pourquoi ce changement ?"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeModal()">Annuler</button>
+                    <button class="btn btn-warning" onclick="submitOverrideRetard()">🚨 Confirmer Override</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        async function submitOverrideRetard() {
+            const data = {
+                employe_id: parseInt(document.getElementById('ovRetardEmpId').value),
+                date_journee: document.getElementById('ovRetardDate').value,
+                nouvelle_heure: document.getElementById('ovRetardHeure').value,
+                raison: document.getElementById('ovRetardRaison').value
+            };
+            try {
+                const res = await fetch(`${API_URL}/admin/override/retard`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+                });
+                if (res.ok) { closeModal(); showToast('✅ Retard modifié'); }
+                else { const err = await res.json(); alert('Erreur: ' + err.detail); }
+            } catch (e) { console.error(e); }
+        }
+
+        function showOverrideSolde() {
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-header"><h3 class="modal-title">💰 Override Solde</h3></div>
+                <div class="form-group">
+                    <label>Téléphone client</label>
+                    <input type="text" id="ovSoldeTel" placeholder="+15149999999">
+                </div>
+                <div class="form-group">
+                    <label>Montant (+/-)</label>
+                    <input type="number" id="ovSoldeMontant" placeholder="50">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="ovSoldeType"><option value="parrainage">Parrainage</option><option value="fidelite">Fidélité</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Raison</label>
+                    <textarea id="ovSoldeRaison" placeholder="Pourquoi cet ajustement ?"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeModal()">Annuler</button>
+                    <button class="btn btn-warning" onclick="submitOverrideSolde()">🚨 Confirmer Override</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        async function submitOverrideSolde() {
+            const data = {
+                client_telephone: document.getElementById('ovSoldeTel').value,
+                montant: parseFloat(document.getElementById('ovSoldeMontant').value),
+                type_solde: document.getElementById('ovSoldeType').value,
+                raison: document.getElementById('ovSoldeRaison').value
+            };
+            try {
+                const res = await fetch(`${API_URL}/admin/override/solde`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+                });
+                if (res.ok) { closeModal(); showToast('✅ Solde ajusté'); }
+                else { const err = await res.json(); alert('Erreur: ' + err.detail); }
+            } catch (e) { console.error(e); }
+        }
+
+        function showOverrideTache() {
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-header"><h3 class="modal-title">🧹 Override Tâche</h3></div>
+                <div class="form-group">
+                    <label>ID Tâche</label>
+                    <input type="number" id="ovTacheId" placeholder="ID de la tâche">
+                </div>
+                <div class="form-group">
+                    <label>Nouveau statut</label>
+                    <select id="ovTacheStatut"><option value="complete">Complète</option><option value="en_attente">En attente</option><option value="annule">Annulée</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Raison</label>
+                    <textarea id="ovTacheRaison" placeholder="Pourquoi ce changement ?"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeModal()">Annuler</button>
+                    <button class="btn btn-warning" onclick="submitOverrideTache()">🚨 Confirmer Override</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        async function submitOverrideTache() {
+            const data = {
+                tache_id: parseInt(document.getElementById('ovTacheId').value),
+                nouveau_statut: document.getElementById('ovTacheStatut').value,
+                raison: document.getElementById('ovTacheRaison').value
+            };
+            try {
+                const res = await fetch(`${API_URL}/admin/override/tache`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+                });
+                if (res.ok) { closeModal(); showToast('✅ Tâche modifiée'); }
+                else { const err = await res.json(); alert('Erreur: ' + err.detail); }
+            } catch (e) { console.error(e); }
+        }
+
+        // ========== COFFRE-FORT VIRTUEL ==========
+
+        async function loadCoffreFort() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/admin/coffre-fort`);
+                const data = await res.json();
+
+                document.getElementById('cfTotalClients').textContent = data.total_clients;
+                document.getElementById('cfTotalSolde').textContent = data.total_solde_parrainage + '$';
+                document.getElementById('cfTotalQR').textContent = data.total_qr_actifs;
+
+                const container = document.getElementById('coffreFortList');
+                if (!data.clients || data.clients.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Aucun client dans le coffre-fort</div>';
+                    return;
+                }
+
+                container.innerHTML = data.clients.map(c => `
+                    <div class="card" style="margin-bottom:15px; border-left:4px solid #667eea;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:700; font-size:16px;">${c.client_nom || c.client_telephone}</div>
+                                <div style="font-size:13px; color:#888; margin-top:4px;">${c.client_telephone}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700; font-size:20px; color:#667eea;">${c.solde_parrainage}$</div>
+                                <div style="font-size:12px; color:#888;">Parrainage</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+                            ${c.qr_codes.map(q => `<span style="background:#e8f5e9; padding:4px 10px; border-radius:12px; font-size:12px;">📱 ${q.code_qr}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Erreur coffre-fort:', err);
+                document.getElementById('coffreFortList').innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Erreur de chargement</div>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showGenererQR() {
+            document.getElementById('modalContent').innerHTML = `
+                <div class="modal-header"><h3 class="modal-title">📱 Générer QR Code</h3></div>
+                <div class="form-group">
+                    <label>Téléphone client</label>
+                    <input type="text" id="qrTel" placeholder="+15149999999">
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="qrType"><option value="parrainage">Parrainage</option><option value="fidelite">Fidélité</option></select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeModal()">Annuler</button>
+                    <button class="btn btn-primary" onclick="submitGenererQR()">📱 Générer</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        async function submitGenererQR() {
+            const data = {
+                client_telephone: document.getElementById('qrTel').value,
+                type: document.getElementById('qrType').value
+            };
+            try {
+                const res = await fetch(`${API_URL}/admin/qr-code/generer`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (res.ok) { closeModal(); showToast('✅ QR Code: ' + result.code_qr); loadCoffreFort(); }
+                else { alert('Erreur: ' + result.detail); }
+            } catch (e) { console.error(e); }
+        }
+
+        // ========== ALERTES NOTATION (Interception) ==========
+
+        async function loadAlertesNotation() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/admin/alertes-notation`);
+                const data = await res.json();
+                window.alertesNotationData = data;
+                renderAlertesNotation(data.critiques, 'critiques');
+            } catch (err) {
+                console.error('Erreur alertes notation:', err);
+                document.getElementById('alertesNotationList').innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Erreur de chargement</div>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function filtrerAlertesNotation(type) {
+            if (!window.alertesNotationData) return;
+            if (type === 'critiques') renderAlertesNotation(window.alertesNotationData.critiques, 'critiques');
+            else if (type === 'moyennes') renderAlertesNotation(window.alertesNotationData.moyennes, 'moyennes');
+            else {
+                renderAlertesNotation([...window.alertesNotationData.critiques, ...window.alertesNotationData.moyennes], 'toutes');
+            }
+        }
+
+        function renderAlertesNotation(notes, type) {
+            const container = document.getElementById('alertesNotationList');
+            if (!notes || notes.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">✅ Aucune alerte</div>';
+                return;
+            }
+
+            container.innerHTML = notes.map(n => {
+                const color = n.note_moyenne < 3 ? '#c62828' : '#ef6c00';
+                const bg = n.note_moyenne < 3 ? '#ffebee' : '#fff3e0';
+                const text = n.note_moyenne < 3 ? '🔴 CRITIQUE' : '🟠 Moyenne';
+
+                return `
+                    <div class="card" style="border-left:4px solid ${color}; margin-bottom:15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:700; font-size:16px;">${n.client_nom || 'Client anonyme'}</div>
+                                <div style="font-size:13px; color:#888; margin-top:4px;">${n.service} - ${new Date(n.created_at).toLocaleDateString('fr-FR')}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700; font-size:22px; color:${color};">${n.note_moyenne}/5</div>
+                                <span style="background:${bg}; color:${color}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">${text}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px; display:flex; gap:10px;">
+                            <div style="font-size:13px;">Accueil: ${n.accueil} | Qualité: ${n.qualite} | Propreté: ${n.proprete} | Ambiance: ${n.ambiance}</div>
+                        </div>
+                        <div style="margin-top:10px; display:flex; gap:10px;">
+                            <button class="btn btn-danger" onclick="showToast('🚨 Alerté - Note interceptée avant Google')">🚨 Intercepter (ne pas publier)</button>
+                            <button class="btn btn-success" onclick="showToast('✅ Note validée pour Google')">✅ Valider pour Google</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========== BASE DE DONNÉES CLIENT & PARRAINAGE ==========
+
+        async function rafraichirBDClients() {
+            showLoading();
+            try {
+                const res = await fetch(`${API_URL}/admin/base-clients`);
+                const data = await res.json();
+                window.bdClientsData = data;
+
+                document.getElementById('bdTotalClients').textContent = data.total_clients || 0;
+                document.getElementById('bdTotalAbonnes').textContent = data.total_abonnes || 0;
+                document.getElementById('bdTotalParrains').textContent = data.total_parrains || 0;
+                document.getElementById('bdSoldeGlobal').textContent = (data.solde_global || 0) + '$';
+
+                renderArbreParrainage(data.arbre_parrainage);
+                renderRegistreAbonnes(data.abonnes);
+                renderFluxFinanciers(data.clients, 'solde_desc');
+            } catch (err) {
+                console.error('Erreur base clients:', err);
+                showToast('❌ Erreur chargement base clients');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderArbreParrainage(arbre) {
+            const container = document.getElementById('arbreParrainageList');
+            if (!arbre || arbre.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Aucun parrainage enregistré</div>';
+                return;
+            }
+
+            container.innerHTML = arbre.map(p => `
+                <div class="card" style="margin-bottom:15px; border-left:4px solid ${p.actif ? '#4CAF50' : '#ccc'};">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; align-items:center;">
+                        <div>
+                            <div style="font-size:12px; color:#888; margin-bottom:4px;">🎯 PARRAIN</div>
+                            <div style="font-weight:700;">${p.parrain_nom || p.parrain_telephone}</div>
+                            <div style="font-size:12px; color:#888;">${p.parrain_type} • ${p.code_qr || '-'}</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="font-size:24px;">➡️</div>
+                            <div style="font-size:12px; color:#888;">${p.date_parrainage}</div>
+                            <div style="font-size:12px; color:#667eea; font-weight:600;">${p.service_achete || 'Inscription'}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:12px; color:#888; margin-bottom:4px;">👤 FILLEUL</div>
+                            <div style="font-weight:700;">${p.filleul_nom || p.filleul_telephone}</div>
+                            <div style="font-size:12px; color:#888;">${p.montant_depense ? p.montant_depense + '$ dépensé' : '-'}</div>
+                            <div style="font-size:12px; color:#4CAF50; font-weight:600;">+${p.gain_parrain || 0}$ gagné</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRegistreAbonnes(abonnes) {
+            const container = document.getElementById('registreAbonnesList');
+            if (!abonnes || abonnes.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Aucun abonné</div>';
+                return;
+            }
+
+            container.innerHTML = abonnes.map(a => `
+                <div class="card" style="margin-bottom:15px; border-left:4px solid #4CAF50;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:700; font-size:16px;">${a.nom || a.telephone}</div>
+                            <div style="font-size:13px; color:#888; margin-top:4px;">${a.telephone}</div>
+                            <div style="font-size:12px; color:#667eea; margin-top:4px;">💎 Forfait: ${a.type_forfait || 'Standard'}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:12px; color:#888;">Employé:</div>
+                            <div style="font-weight:600; font-size:14px;">${a.employe_vendeur || '-'}</div>
+                            <div style="font-size:12px; color:#4CAF50; margin-top:4px;">✅ ${a.paiements_count || 0} paiements</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; font-size:12px; color:#888;">
+                        Inscription: ${a.date_inscription || '-'} | Prochain paiement: ${a.prochain_paiement || '-'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFluxFinanciers(clients, tri) {
+            const container = document.getElementById('fluxFinanciersList');
+            if (!clients || clients.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#888; padding:30px;">Aucun client avec solde</div>';
+                return;
+            }
+
+            let sorted = [...clients];
+            if (tri === 'solde_desc') sorted.sort((a, b) => (b.solde || 0) - (a.solde || 0));
+            else if (tri === 'solde_asc') sorted.sort((a, b) => (a.solde || 0) - (b.solde || 0));
+            else if (tri === 'date') sorted.sort((a, b) => new Date(b.date_inscription) - new Date(a.date_inscription));
+
+            container.innerHTML = sorted.map((c, i) => `
+                <div class="card" style="margin-bottom:10px; border-left:4px solid ${i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#667eea'};">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:30px; height:30px; border-radius:50%; background:${i < 3 ? '#FFD700' : '#f0f0f0'}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:#333;">${i + 1}</div>
+                            <div>
+                                <div style="font-weight:700;">${c.nom || c.telephone}</div>
+                                <div style="font-size:12px; color:#888;">${c.telephone}</div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-weight:700; font-size:22px; color:${c.solde > 50 ? '#4CAF50' : c.solde > 0 ? '#FFC107' : '#888'};">${c.solde || 0}$</div>
+                            <div style="font-size:12px; color:#888;">${c.parrainages || 0} parrainages</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrerBDClients(filtre) {
+            if (!window.bdClientsData) return;
+            const data = window.bdClientsData;
+
+            if (filtre === 'abonnes') {
+                renderFluxFinanciers(data.abonnes.map(a => ({...a, solde: a.solde_fidelite || 0})), 'solde_desc');
+            } else if (filtre === 'parrains') {
+                const parrains = data.arbre_parrainage.map(p => ({
+                    nom: p.parrain_nom,
+                    telephone: p.parrain_telephone,
+                    solde: p.gain_parrain || 0,
+                    parrainages: 1
+                }));
+                renderFluxFinanciers(parrains, 'solde_desc');
+            } else {
+                renderFluxFinanciers(data.clients, 'solde_desc');
+            }
+        }
+
+        function filtrerArbre(filtre) {
+            if (!window.bdClientsData) return;
+            let arbre = window.bdClientsData.arbre_parrainage;
+            if (filtre === 'actif') arbre = arbre.filter(p => p.actif);
+            renderArbreParrainage(arbre);
+        }
+
+        function trierFlux(tri) {
+            if (!window.bdClientsData) return;
+            renderFluxFinanciers(window.bdClientsData.clients, tri);
+        }
+
+        // ========== UTILS ==========
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+        }
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:15px 30px;border-radius:25px;z-index:3000;font-weight:600;';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ========== INIT ==========
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('fr-FR', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        loadOverview();
+    </script>
+</body>
+</html>
