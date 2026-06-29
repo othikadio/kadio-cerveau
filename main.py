@@ -247,6 +247,12 @@ async def employe_page():
     
     return Response(content=html, media_type="text/html")
 
+
+@app.get("/staff")
+async def staff_page():
+    """Alias /staff → /employe (interface employés et tablette)"""
+    return await employe_page()
+
 @app.get("/health")
 async def health():
     """Vérification santé de tous les connecteurs"""
@@ -6480,7 +6486,6 @@ async def get_base_clients():
     }
 
 
-
 # ==================== CLIENT PORTAL (LIEN 3) ====================
 
 @app.get("/client")
@@ -6507,6 +6512,12 @@ async def client_page():
         return {"error": "Page client not found", "checked_paths": possible_paths}
     
     return Response(content=html, media_type="text/html")
+
+
+@app.get("/hub")
+async def hub_page():
+    """Alias /hub → /client (portail clients, abonnés, parrainage)"""
+    return await client_page()
 
 
 @app.post("/api/client/register")
